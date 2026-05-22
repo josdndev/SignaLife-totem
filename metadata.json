@@ -1,0 +1,6 @@
+{
+  "name": "ID OCR Extractor",
+  "description": "An application to extract text and structured data from national ID cards using Gemini's OCR capabilities.",
+  "requestFramePermissions": ["camera", "microphone"],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

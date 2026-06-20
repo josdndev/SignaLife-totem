@@ -6,10 +6,12 @@ import { DataField } from './components/DataField';
 import { LiveCamera } from './components/LiveCamera';
 import { RPPGCamera } from './components/RPPGCamera';
 import { SymptomInterview } from './components/SymptomInterview';
+import { InsuranceClaimInterview } from './components/InsuranceClaimInterview';
+import { EmergencyLetter } from './components/EmergencyLetter';
 import type { IDData, VitalSigns } from './types';
 
 export default function App() {
-  const [currentStep, setCurrentStep] = useState<1 | 2 | 3 | 4>(1);
+  const [currentStep, setCurrentStep] = useState<1 | 2 | 3 | 4 | 5 | 6>(1);
 
   // Stage 1: ID
   const [isCameraActive, setIsCameraActive] = useState(false);
@@ -27,6 +29,9 @@ export default function App() {
   const [symptoms, setSymptoms] = useState("");
   const [isAnalyzingTriage, setIsAnalyzingTriage] = useState(false);
   const [triageResult, setTriageResult] = useState<any | null>(null);
+  
+  // Stage 5: Insurance Interview
+  const [insuranceData, setInsuranceData] = useState("");
 
   const handleCapture = async (base64Image: string) => {
     setSelectedImage(base64Image);
@@ -116,7 +121,7 @@ export default function App() {
         <div className="flex items-center justify-between relative px-2 w-full">
           <div className="absolute left-0 top-1/2 -translate-y-1/2 w-full h-1 bg-slate-200 -z-10 rounded-full"></div>
           <div className="absolute left-0 top-1/2 -translate-y-1/2 h-1 bg-emerald-600 -z-10 rounded-full transition-all duration-500" 
-            style={{ width: currentStep === 1 ? '0%' : currentStep === 2 ? '33%' : currentStep === 3 ? '66%' : '100%' }}></div>
+            style={{ width: currentStep === 1 ? '0%' : currentStep === 2 ? '25%' : currentStep === 3 ? '50%' : currentStep === 4 ? '75%' : '100%' }}></div>
           
           <div className={`flex flex-col items-center gap-2 ${currentStep >= 1 ? 'text-emerald-600' : 'text-slate-400'}`}>
             <div className={`w-10 h-10 rounded-full flex items-center justify-center font-bold text-lg mb-1 transition-colors ${currentStep >= 1 ? 'bg-emerald-600 text-white shadow-md' : 'bg-slate-200 text-slate-500'}`}>
@@ -125,6 +130,7 @@ export default function App() {
             <span className="text-[10px] font-semibold uppercase tracking-wider hidden sm:block">Identidad</span>
           </div>
           
+          {/* Stage 2: Vitals */}
           <div className={`flex flex-col items-center gap-2 ${currentStep >= 2 ? 'text-emerald-600' : 'text-slate-400'}`}>
             <div className={`w-10 h-10 rounded-full flex items-center justify-center font-bold text-lg mb-1 transition-colors ${currentStep >= 2 ? 'bg-emerald-600 text-white shadow-md' : 'bg-slate-200 text-slate-500'}`}>
               <HeartPulse className="w-5 h-5" />
@@ -132,8 +138,17 @@ export default function App() {
             <span className="text-[10px] font-semibold uppercase tracking-wider hidden sm:block">Signos Vitales</span>
           </div>
 
+          {/* New Stage: Insurance Interview */}
           <div className={`flex flex-col items-center gap-2 ${currentStep >= 3 ? 'text-emerald-600' : 'text-slate-400'}`}>
             <div className={`w-10 h-10 rounded-full flex items-center justify-center font-bold text-lg mb-1 transition-colors ${currentStep >= 3 ? 'bg-emerald-600 text-white shadow-md' : 'bg-slate-200 text-slate-500'}`}>
+              <FileText className="w-5 h-5" />
+            </div>
+            <span className="text-[10px] font-semibold uppercase tracking-wider hidden sm:block">Seguro</span>
+          </div>
+
+          {/* Stage 3: Symptoms */}
+          <div className={`flex flex-col items-center gap-2 ${currentStep >= 4 ? 'text-emerald-600' : 'text-slate-400'}`}>
+            <div className={`w-10 h-10 rounded-full flex items-center justify-center font-bold text-lg mb-1 transition-colors ${currentStep >= 4 ? 'bg-emerald-600 text-white shadow-md' : 'bg-slate-200 text-slate-500'}`}>
               <MessageCircle className="w-5 h-5" />
             </div>
             <span className="text-[10px] font-semibold uppercase tracking-wider hidden sm:block">Síntomas</span>
@@ -144,6 +159,13 @@ export default function App() {
               <Check className="w-5 h-5" />
             </div>
             <span className="text-[10px] font-semibold uppercase tracking-wider hidden sm:block">Resultados</span>
+          </div>
+          
+          <div className={`flex flex-col items-center gap-2 ${currentStep >= 5 ? 'text-emerald-600' : 'text-slate-400'}`}>
+            <div className={`w-10 h-10 rounded-full flex items-center justify-center font-bold text-lg mb-1 transition-colors ${currentStep >= 5 ? 'bg-emerald-600 text-white shadow-md' : 'bg-slate-200 text-slate-500'}`}>
+              <FileText className="w-5 h-5" />
+            </div>
+            <span className="text-[10px] font-semibold uppercase tracking-wider hidden sm:block">Carta</span>
           </div>
         </div>
       </div>
@@ -297,7 +319,7 @@ export default function App() {
                       setVitalSigns(vitals);
                       setPatientPhoto(photoUrl);
                       setIsRPPGActive(false);
-                      setCurrentStep(3); // Go to symptom interview
+                      setCurrentStep(3); // Go to insurance interview
                     }} 
                     onCancel={() => setIsRPPGActive(false)} 
                   />
@@ -306,23 +328,46 @@ export default function App() {
             </div>
           )}
 
-          {/* STAGE 3: Encuesta de Síntomas */}
+          {/* STAGE 3: Entrevista de Seguro (New) */}
           {currentStep === 3 && (
             <motion.div key="step3" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="flex flex-col h-full bg-slate-50">
+               <InsuranceClaimInterview 
+                 onComplete={(data) => {
+                   setInsuranceData(data);
+                   setCurrentStep(4);
+                 }}
+               />
+               <div className="p-4">
+                 <button onClick={() => setCurrentStep(4)} className="w-full py-2 text-sm text-slate-500 font-medium hover:underline">
+                   Saltar paso (omitir encuesta de seguro)
+                 </button>
+               </div>
+            </motion.div>
+          )}
+
+          {/* STAGE 4: Encuesta de Síntomas (Renumbered from 3) */}
+          {currentStep === 4 && (
+            <motion.div key="step4" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="flex flex-col h-full bg-slate-50">
                <SymptomInterview 
                  onComplete={(collectedSymptoms) => {
                    setSymptoms(collectedSymptoms);
                    if (vitalSigns && patientPhoto) {
                      handleAnalyzeTriage(collectedSymptoms, vitalSigns, patientPhoto);
                    }
+                   setCurrentStep(5);
                  }}
                />
+               <div className="p-4">
+                 <button onClick={() => setCurrentStep(5)} className="w-full py-2 text-sm text-slate-500 font-medium hover:underline">
+                   Saltar paso (omitir síntomas)
+                 </button>
+               </div>
             </motion.div>
           )}
 
-          {/* STAGE 4: Resumen Final y Triage */}
-          {currentStep === 4 && (
-             <div className="flex flex-col h-full" key="step4">
+          {/* STAGE 5: Resumen Final y Triage (Renumbered from 4) */}
+          {currentStep === 5 && (
+             <div className="flex flex-col h-full" key="step5">
                {isAnalyzingTriage ? (
                   <div className="flex flex-col h-full items-center justify-center p-12 py-24">
                      <ScanLine className="w-16 h-16 text-emerald-500 animate-pulse mb-6" />

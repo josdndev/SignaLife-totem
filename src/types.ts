@@ -13,6 +13,10 @@ export interface VitalSigns {
   hrv: number;
   rr: number;
   stress: string;
+  bp: string;
+  spo2: number;
+  glucosa: number;
+  hba1c: number;
   chartData: { time: number; value: number }[];
 }
 

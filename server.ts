@@ -1,23 +1,26 @@
 import express from "express";
 import path from "path";
 import { createServer as createViteServer } from "vite";
-import { GoogleGenAI, Type, Schema } from "@google/genai";
+import { GoogleGenAI } from "@google/genai";
+import "dotenv/config";
+const Type = {
+  STRING: "string",
+  OBJECT: "object",
+  ARRAY: "array",
+  NUMBER: "number",
+  BOOLEAN: "boolean"
+};
+type Schema = any;
 
 async function startServer() {
   const app = express();
   const PORT = 3000;
 
+  const RESIDENT_MODEL = "gemma3:4b"; // Gemma 4 light equivalent (supports vision)
+  const SPECIALIST_MODEL = "medgemma"; // Especialista médico estricto
+
   // Increase payload size for base64 images
   app.use(express.json({ limit: '10mb' }));
-
-  const ai = new GoogleGenAI({
-    apiKey: process.env.GEMINI_API_KEY,
-    httpOptions: {
-      headers: {
-        'User-Agent': 'aistudio-build',
-      }
-    }
-  });
 
   // API constraints for Venezuelan ID extraction
   const responseSchema: Schema = {
@@ -34,31 +37,118 @@ async function startServer() {
     required: ["idNumber", "names", "surnames", "dateOfBirth", "maritalStatus", "issueDate", "expiryDate"]
   };
 
-  async function generateContentWithFallback(contents: any, config: any) {
-    const models = ["gemini-3.5-flash", "gemini-2.5-flash", "gemini-1.5-flash", "gemini-1.5-pro"];
-    let lastError: any;
+  function buildOllamaPayload(contents: any, config: any, modelName: string = RESIDENT_MODEL) {
+    let promptText = "";
+    let images: string[] = [];
 
-    for (const model of models) {
-      try {
-        console.log(`Intentando con el modelo: ${model}`);
-        const response = await ai.models.generateContent({
-          model,
-          contents,
-          config
-        });
-        return response;
-      } catch (error: any) {
-        lastError = error;
-        console.error(`Error con el modelo ${model}:`, error.message || error);
-        // Si el error es por cuota, intentamos con el siguiente
-        if (error.status === 'RESOURCE_EXHAUSTED' || error.status === 429 || (error.message && error.message.includes('429'))) {
-           continue;
+    const extractData = (items: any[]) => {
+      for (const item of items) {
+        if (typeof item === 'string') {
+          promptText += item + "\n";
+        } else if (item.text) {
+          promptText += item.text + "\n";
+        } else if (item.inlineData && item.inlineData.data) {
+          images.push(item.inlineData.data);
+        } else if (item.parts) {
+          extractData(item.parts);
         }
-        // Si es otro error, lo lanzamos
-        throw error;
+      }
+    };
+
+    if (Array.isArray(contents)) {
+      extractData(contents);
+    } else {
+      extractData([contents]);
+    }
+
+    if (config?.responseSchema) {
+      promptText += "\n\nDEBES responder usando el siguiente formato JSON estricto: " + JSON.stringify(config.responseSchema);
+    }
+
+    return {
+      model: modelName,
+      prompt: promptText.trim(),
+      images: images.length > 0 ? images : undefined,
+      stream: false,
+      format: config?.responseMimeType === "application/json" ? "json" : undefined,
+      options: {
+        temperature: config?.temperature ?? 0.7,
+        num_ctx: 16384
+      }
+    };
+  }
+
+  async function generateContentWithFallback(contents: any, config: any, modelName: string = RESIDENT_MODEL) {
+    if (process.env.GEMINI_API_KEY) {
+      console.log(`Llamando a Gemini (gemini-3.1-flash-lite) en lugar de ${modelName}`);
+      const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
+      
+      let parts: any[] = [];
+      const extractData = (items: any[]) => {
+        for (const item of items) {
+          if (typeof item === 'string') {
+            parts.push({ text: item });
+          } else if (item.text) {
+            parts.push({ text: item.text });
+          } else if (item.inlineData) {
+            parts.push({ inlineData: item.inlineData });
+          } else if (item.parts) {
+            extractData(item.parts);
+          } else if (item.role && item.parts) {
+            extractData(item.parts);
+          }
+        }
+      };
+
+      if (Array.isArray(contents)) {
+        extractData(contents);
+      } else {
+        extractData([contents]);
+      }
+
+      try {
+        const response = await ai.models.generateContent({
+          model: 'gemini-3.1-flash-lite',
+          contents: [
+            {
+              role: 'user',
+              parts: parts
+            }
+          ],
+          config: {
+            temperature: config?.temperature ?? 0.7,
+            responseMimeType: config?.responseMimeType,
+            responseSchema: config?.responseSchema
+          }
+        });
+        return { text: response.text || "" };
+      } catch (error: any) {
+         console.error("Error conectando con Gemini:", error);
+         throw error;
       }
     }
-    throw lastError;
+
+    const payload = buildOllamaPayload(contents, config, modelName);
+    console.log(`Llamando a Ollama local (${modelName})`);
+    
+    try {
+      const res = await fetch("http://localhost:11434/api/generate", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(payload)
+      });
+      
+      if (!res.ok) {
+        const errText = await res.text();
+        throw new Error(`Ollama Error ${res.status}: ${errText}`);
+      }
+      
+      const data = await res.json();
+      return { text: data.response };
+    } catch (error: any) {
+      console.error("Error conectando con Ollama:", error.message);
+      throw error;
+    }
   }
 
   app.post("/api/transcribe", async (req, res) => {
@@ -66,6 +156,33 @@ async function startServer() {
       const { audioBase64, mimeType } = req.body;
       const base64Data = audioBase64.replace(/^data:audio\/\w+(?:;\w+=[^;]+)*;base64,/, "");
 
+      if (process.env.GEMINI_API_KEY) {
+        console.log("Transcribiendo audio con Gemini...");
+        const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
+        const response = await ai.models.generateContent({
+            model: 'gemini-3.1-flash-lite',
+            contents: [
+              {
+                role: 'user',
+                parts: [
+                  {
+                    inlineData: {
+                      data: base64Data,
+                      mimeType: mimeType || 'audio/webm'
+                    }
+                  },
+                  {
+                    text: "Transcribe el siguiente audio médico en español. Responde ÚNICAMENTE con el texto transcrito sin agregar comillas, saludos ni contexto."
+                  }
+                ]
+              }
+            ]
+        });
+        let text = response.text || "";
+        return res.json({ text: text.trim() });
+      }
+
+      console.log("Transcribiendo audio con Ollama...");
       const response = await generateContentWithFallback([
           {
             inlineData: {
@@ -114,16 +231,72 @@ async function startServer() {
         }
       );
 
-      const text = response.text;
+      let text = response.text;
       if (!text) {
-        throw new Error("No data returned from Gemini");
+        throw new Error("No data returned from Gemini/Ollama");
       }
+      
+      // Limpiar markdown (ej. ```json ... ```)
+      text = text.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim();
 
       const extractedData = JSON.parse(text);
       res.json({ data: extractedData });
     } catch (error: any) {
       console.error("Extraction error:", error);
       res.status(500).json({ error: error.message || "Failed to extract data" });
+    }
+  });
+
+  app.post("/api/vitals", async (req, res) => {
+    try {
+      const { bpm, hrv, lfPower, hfPower, spo2 } = req.body;
+
+      const responseSchema: Schema = {
+        type: Type.OBJECT,
+        properties: {
+          sys: { type: Type.NUMBER, description: "Presión arterial sistólica estimada (mmHg)" },
+          dia: { type: Type.NUMBER, description: "Presión arterial diastólica estimada (mmHg)" },
+          glucosa: { type: Type.NUMBER, description: "Nivel de glucosa estimado en sangre (mg/dL)" },
+          hba1c: { type: Type.NUMBER, description: "Porcentaje estimado de HbA1c" }
+        },
+        required: ["sys", "dia", "glucosa", "hba1c"]
+      };
+
+      const prompt = `
+        Eres un modelo de Inteligencia Artificial clínica (Red Neuronal Profunda simulada).
+        Tu objetivo es inferir estadísticamente la presión arterial y los niveles de glucosa basados en los siguientes biomarcadores extraídos por fotopletismografía (rPPG):
+        
+        - Ritmo Cardíaco (BPM): ${bpm}
+        - Variabilidad del Ritmo Cardíaco (HRV): ${hrv} ms
+        - Poder Baja Frecuencia (LF): ${lfPower}
+        - Poder Alta Frecuencia (HF): ${hfPower}
+        - Saturación de Oxígeno (SpO2): ${spo2}%
+        
+        Considera que una taquicardia severa post-ejercicio (ej. > 150 BPM) casi siempre se correlaciona con un pico hipertensivo fisiológico normal (ej. > 140/90). 
+        El nivel de glucosa en esfuerzo intenso puede bajar ligeramente o mantenerse normal.
+        Responde estrictamente con el JSON solicitado.
+      `;
+
+      const response = await generateContentWithFallback(
+        [{ text: prompt }],
+        {
+          responseMimeType: "application/json",
+          responseSchema: responseSchema,
+          temperature: 0.3,
+        }
+      );
+
+      let text = response.text;
+      if (!text) {
+        throw new Error("No data returned from AI");
+      }
+      text = text.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim();
+
+      const predictedVitals = JSON.parse(text);
+      res.json(predictedVitals);
+    } catch (error: any) {
+      console.error("Vitals prediction error:", error);
+      res.status(500).json({ error: error.message || "Failed to predict vitals" });
     }
   });
 
@@ -158,22 +331,74 @@ async function startServer() {
         });
       }
 
-      const response = await generateContentWithFallback(
+      const residentResponse = await generateContentWithFallback(
         [{ role: "user", parts }],
         {
           responseMimeType: "application/json",
           responseSchema,
           temperature: 0.2,
-        }
+        },
+        RESIDENT_MODEL
       );
 
-      const text = response.text;
-      if (!text) {
-        throw new Error("No data returned from Gemini");
+      const residentText = residentResponse.text;
+      if (!residentText) {
+        throw new Error("No data returned from Resident model");
       }
 
-      let triageData = JSON.parse(text);
-      res.json({ triage: triageData });
+      let triageData = JSON.parse(residentText);
+
+      // Paso 2: Evaluación del Especialista (MedGemma)
+      const specialistSchema: Schema = {
+        type: Type.OBJECT,
+        properties: {
+          score: { type: Type.NUMBER, description: "Calidad médica del análisis de 1 a 10" },
+          correctedTriage: responseSchema
+        },
+        required: ["score"]
+      };
+
+      const specialistPrompt = `
+Eres un Médico Adjunto Especialista (MedGemma). Tu trabajo es evaluar críticamente el triage generado por un Residente.
+Analiza si el triage propuesto es médicamente sólido o si viola algún principio médico o ignora señales de alarma (red flags).
+
+=== DATOS DEL PACIENTE ===
+Síntomas: "${symptoms || 'Ninguno'}"
+Signos Vitales: ${JSON.stringify(vitals, null, 2)}
+
+=== TRIAGE DEL RESIDENTE ===
+${JSON.stringify(triageData, null, 2)}
+
+Califica la calidad de 1 a 10. Si la calidad es mayor a 8, no necesitas llenar 'correctedTriage'. Si es <= 8, completa obligatoriamente 'correctedTriage' con el triage corregido.
+      `;
+
+      const specialistResponse = await generateContentWithFallback(
+        [{ text: specialistPrompt }],
+        {
+          responseMimeType: "application/json",
+          responseSchema: specialistSchema,
+          temperature: 0.1,
+        },
+        SPECIALIST_MODEL
+      );
+
+      const specialistText = specialistResponse.text;
+      let finalTriage = triageData;
+
+      if (specialistText) {
+        try {
+          const specialistData = JSON.parse(specialistText);
+          console.log(`Evaluación MedGemma - Score: ${specialistData.score}`);
+          if (specialistData.score <= 8 && specialistData.correctedTriage) {
+            console.log("Aplicando correcciones de MedGemma...");
+            finalTriage = specialistData.correctedTriage;
+          }
+        } catch (e) {
+          console.error("Error parseando respuesta de MedGemma, usando triage del Residente.", e);
+        }
+      }
+
+      res.json({ triage: finalTriage });
     } catch (error: any) {
       console.error(error);
       res.status(500).json({ error: error.message });
@@ -184,21 +409,35 @@ async function startServer() {
     try {
       const { history } = req.body;
       const prompt = `
-        Eres un médico experto realizando el triage en urgencias. Tu objetivo es hacer UNA pregunta a la vez al paciente para recolectar información sobre su motivo de consulta. 
+        Eres un Asistente Clínico de Admisiones. Tu rol es doble: realizar un triage médico de urgencias y recolectar los datos para la carta de siniestro del seguro.
+        
+        Objetivo Médico:
+        - Determinar el motivo principal de consulta y recabar síntomas relevantes.
+
+        Objetivo de Seguro (Debes preguntar esto paso a paso):
+        1. Ciudad de la declaración.
+        2. Número de póliza.
+        3. Fecha del suceso.
+        4. Hora del suceso.
+        5. Lugar del suceso.
+        6. Descripción de los hechos (qué pasó).
+        7. Daños o lesiones.
+
         Reglas:
-        1. Debes hacer máximo 7 preguntas en total en la conversación.
-        2. Siempre haz solo UNA pregunta por turno.
-        3. Mantén un tono compasivo pero directo y breve.
-        4. Si después de algunas preguntas (o máximo 7) ya tienes una idea clara de la emergencia, responde SOLAMENTE con la palabra "TRIAGE_COMPLETE".
-        5. La primera pregunta debe ser "Hola, ¿cuál es el motivo de tu consulta hoy?".
+        1. Debes hacer máximo 10 preguntas en total en la conversación.
+        2. Haz siempre UNA pregunta a la vez (por ejemplo, no pidas la ciudad y la fecha al mismo tiempo).
+        3. Mantén un tono profesional, compasivo y directo.
+        4. El tipo de seguro es SIEMPRE "Salud". No lo preguntes.
+        5. La primera pregunta de la conversación debe ser: "Hola, soy el asistente clínico de admisiones. ¿Cuál es el motivo de tu consulta hoy?".
+        6. Revisa estrictamente el historial. Una vez que tengas una idea clara de la emergencia médica Y hayas recopilado los 7 datos del seguro, tu ÚNICA respuesta debe ser la palabra exacta: "INTERVIEW_COMPLETE". No agregues nada más en esa respuesta final.
       `;
 
       const response = await generateContentWithFallback([
           { text: prompt },
           ...history.map((msg: any) => ({
-             text: `${msg.role === 'user' ? 'Paciente' : 'Doctor'}: ${msg.content}`
+             text: `${msg.role === 'user' ? 'Paciente' : 'Asistente'}: ${msg.content}`
           })),
-          { text: 'Doctor:' }
+          { text: 'Asistente:' }
         ],
         {
           temperature: 0.3,
@@ -209,49 +448,7 @@ async function startServer() {
       res.json({ reply: reply.trim() });
     } catch (error: any) {
       console.error("/api/interview error:", error);
-      res.status(500).json({ error: error.message || "Error al generar entrevista" });
-    }
-  });
-
-  app.post("/api/insurance-interview", async (req, res) => {
-    try {
-      const { history } = req.body;
-      const prompt = `
-        Eres un asistente experto en seguros. Tu objetivo es ayudar al usuario a llenar una carta de declaración de siniestro.
-        Debes preguntar uno por uno los siguientes datos al usuario, si no los tienes:
-        1. Ciudad de la carta.
-        2. Tipo de seguro (ej. Salud, Automóvil).
-        3. Número de póliza.
-        4. Fecha del suceso.
-        5. Hora del suceso.
-        6. Lugar del suceso.
-        7. Descripción de los hechos (qué pasó).
-        8. Daños o lesiones registrados.
-
-        Reglas:
-        1. Haz UNA pregunta a la vez.
-        2. Mantén un tono profesional y amable.
-        3. Cuando hayas recopilado toda la información, responde SOLAMENTE con "INSURANCE_COLLECTED".
-        4. Si es la primera vez que interactúas, saluda preguntando por la ciudad de emisión.
-      `;
-
-      const response = await generateContentWithFallback([
-          { text: prompt },
-          ...history.map((msg: any) => ({
-             text: `${msg.role === 'user' ? 'Usuario' : 'Asistente Seguro'}: ${msg.content}`
-          })),
-          { text: 'Asistente Seguro:' }
-        ],
-        {
-          temperature: 0.3,
-        }
-      );
-
-      let reply = response.text || "";
-      res.json({ reply: reply.trim() });
-    } catch (error: any) {
-      console.error("/api/insurance-interview error:", error);
-      res.status(500).json({ error: error.message || "Error al generar entrevista de seguro" });
+      res.status(500).json({ error: error.message || "Error al generar entrevista unificada" });
     }
   });
 

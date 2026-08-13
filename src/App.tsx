@@ -1,19 +1,19 @@
 import React, { useState } from 'react';
-import { ScanLine, RotateCcw, AlertCircle, FileText, Camera, Activity, HeartPulse, Check, UserPlus, Wind, ActivitySquare, MessageCircle } from 'lucide-react';
+import { ScanLine, RotateCcw, AlertCircle, FileText, Camera, Activity, HeartPulse, Check, UserPlus, Wind, ActivitySquare, MessageCircle, Keyboard as KeyboardIcon } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { ResponsiveContainer, LineChart, Line, YAxis, Tooltip } from 'recharts';
 import { DataField } from './components/DataField';
 import { LiveCamera } from './components/LiveCamera';
 import { RPPGCamera } from './components/RPPGCamera';
 import { SymptomInterview } from './components/SymptomInterview';
-import { InsuranceClaimInterview } from './components/InsuranceClaimInterview';
 import { EmergencyLetter } from './components/EmergencyLetter';
 import type { IDData, VitalSigns } from './types';
 
 export default function App() {
-  const [currentStep, setCurrentStep] = useState<1 | 2 | 3 | 4 | 5 | 6>(1);
+  const [currentStep, setCurrentStep] = useState<1 | 2 | 3 | 4>(1);
 
   // Stage 1: ID
+  const [isManualEntry, setIsManualEntry] = useState(false);
   const [isCameraActive, setIsCameraActive] = useState(false);
   const [selectedImage, setSelectedImage] = useState<string | null>(null);
   const [isProcessing, setIsProcessing] = useState(false);
@@ -25,13 +25,10 @@ export default function App() {
   const [vitalSigns, setVitalSigns] = useState<VitalSigns | null>(null);
   const [patientPhoto, setPatientPhoto] = useState<string | null>(null);
 
-  // Stage 3 & 4: Symptoms & Triage
+  // Stage 3: Unified Interview
   const [symptoms, setSymptoms] = useState("");
   const [isAnalyzingTriage, setIsAnalyzingTriage] = useState(false);
   const [triageResult, setTriageResult] = useState<any | null>(null);
-  
-  // Stage 5: Insurance Interview
-  const [insuranceData, setInsuranceData] = useState("");
 
   const handleCapture = async (base64Image: string) => {
     setSelectedImage(base64Image);
@@ -107,6 +104,7 @@ export default function App() {
     setSymptoms("");
     setTriageResult(null);
     setIsRPPGActive(false);
+    setIsManualEntry(false);
     setCurrentStep(1);
   };
 
@@ -121,7 +119,7 @@ export default function App() {
         <div className="flex items-center justify-between relative px-2 w-full">
           <div className="absolute left-0 top-1/2 -translate-y-1/2 w-full h-1 bg-slate-200 -z-10 rounded-full"></div>
           <div className="absolute left-0 top-1/2 -translate-y-1/2 h-1 bg-emerald-600 -z-10 rounded-full transition-all duration-500" 
-            style={{ width: currentStep === 1 ? '0%' : currentStep === 2 ? '25%' : currentStep === 3 ? '50%' : currentStep === 4 ? '75%' : '100%' }}></div>
+            style={{ width: currentStep === 1 ? '0%' : currentStep === 2 ? '33%' : currentStep === 3 ? '66%' : '100%' }}></div>
           
           <div className={`flex flex-col items-center gap-2 ${currentStep >= 1 ? 'text-emerald-600' : 'text-slate-400'}`}>
             <div className={`w-10 h-10 rounded-full flex items-center justify-center font-bold text-lg mb-1 transition-colors ${currentStep >= 1 ? 'bg-emerald-600 text-white shadow-md' : 'bg-slate-200 text-slate-500'}`}>
@@ -130,7 +128,6 @@ export default function App() {
             <span className="text-[10px] font-semibold uppercase tracking-wider hidden sm:block">Identidad</span>
           </div>
           
-          {/* Stage 2: Vitals */}
           <div className={`flex flex-col items-center gap-2 ${currentStep >= 2 ? 'text-emerald-600' : 'text-slate-400'}`}>
             <div className={`w-10 h-10 rounded-full flex items-center justify-center font-bold text-lg mb-1 transition-colors ${currentStep >= 2 ? 'bg-emerald-600 text-white shadow-md' : 'bg-slate-200 text-slate-500'}`}>
               <HeartPulse className="w-5 h-5" />
@@ -138,20 +135,11 @@ export default function App() {
             <span className="text-[10px] font-semibold uppercase tracking-wider hidden sm:block">Signos Vitales</span>
           </div>
 
-          {/* New Stage: Insurance Interview */}
           <div className={`flex flex-col items-center gap-2 ${currentStep >= 3 ? 'text-emerald-600' : 'text-slate-400'}`}>
             <div className={`w-10 h-10 rounded-full flex items-center justify-center font-bold text-lg mb-1 transition-colors ${currentStep >= 3 ? 'bg-emerald-600 text-white shadow-md' : 'bg-slate-200 text-slate-500'}`}>
-              <FileText className="w-5 h-5" />
-            </div>
-            <span className="text-[10px] font-semibold uppercase tracking-wider hidden sm:block">Seguro</span>
-          </div>
-
-          {/* Stage 3: Symptoms */}
-          <div className={`flex flex-col items-center gap-2 ${currentStep >= 4 ? 'text-emerald-600' : 'text-slate-400'}`}>
-            <div className={`w-10 h-10 rounded-full flex items-center justify-center font-bold text-lg mb-1 transition-colors ${currentStep >= 4 ? 'bg-emerald-600 text-white shadow-md' : 'bg-slate-200 text-slate-500'}`}>
               <MessageCircle className="w-5 h-5" />
             </div>
-            <span className="text-[10px] font-semibold uppercase tracking-wider hidden sm:block">Síntomas</span>
+            <span className="text-[10px] font-semibold uppercase tracking-wider hidden sm:block">Entrevista Única</span>
           </div>
 
           <div className={`flex flex-col items-center gap-2 ${currentStep >= 4 ? 'text-emerald-600' : 'text-slate-400'}`}>
@@ -159,13 +147,6 @@ export default function App() {
               <Check className="w-5 h-5" />
             </div>
             <span className="text-[10px] font-semibold uppercase tracking-wider hidden sm:block">Resultados</span>
-          </div>
-          
-          <div className={`flex flex-col items-center gap-2 ${currentStep >= 5 ? 'text-emerald-600' : 'text-slate-400'}`}>
-            <div className={`w-10 h-10 rounded-full flex items-center justify-center font-bold text-lg mb-1 transition-colors ${currentStep >= 5 ? 'bg-emerald-600 text-white shadow-md' : 'bg-slate-200 text-slate-500'}`}>
-              <FileText className="w-5 h-5" />
-            </div>
-            <span className="text-[10px] font-semibold uppercase tracking-wider hidden sm:block">Carta</span>
           </div>
         </div>
       </div>
@@ -190,22 +171,33 @@ export default function App() {
 
               <div className="p-6 md:p-8">
                 <AnimatePresence mode="wait">
-                  {!selectedImage && !isCameraActive && (
+                  {!selectedImage && !isCameraActive && !isManualEntry && (
                     <motion.div 
                       key="start-prompt"
                       initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
                       className="flex flex-col items-center justify-center py-10 px-4 border-2 border-dashed border-slate-200 rounded-xl bg-slate-50"
                     >
-                      <button 
-                        onClick={() => setIsCameraActive(true)}
-                        className="flex flex-col items-center justify-center w-48 h-48 rounded-2xl bg-white border-2 border-emerald-100 shadow-md shadow-emerald-50 hover:border-emerald-500 hover:shadow-lg transition-all group cursor-pointer text-center p-4 mb-4"
-                      >
-                        <Camera className="w-12 h-12 text-emerald-500 mb-4 group-hover:scale-110 transition-transform" />
-                        <span className="text-base font-semibold text-slate-800 mb-1">Abrir Cámara</span>
-                        <span className="text-xs text-slate-500 font-medium">Toca para capturar documento</span>
-                      </button>
+                      <div className="flex gap-4 mb-4">
+                        <button 
+                          onClick={() => setIsCameraActive(true)}
+                          className="flex flex-col items-center justify-center w-40 h-40 rounded-2xl bg-white border-2 border-emerald-100 shadow-md shadow-emerald-50 hover:border-emerald-500 hover:shadow-lg transition-all group cursor-pointer text-center p-4"
+                        >
+                          <Camera className="w-10 h-10 text-emerald-500 mb-2 group-hover:scale-110 transition-transform" />
+                          <span className="text-sm font-semibold text-slate-800 mb-1">Abrir Cámara</span>
+                        </button>
+                        <button 
+                          onClick={() => {
+                            setIsManualEntry(true);
+                            setExtractedData({ names: '', surnames: '', idNumber: '', dateOfBirth: '', maritalStatus: '', issueDate: '', expiryDate: '' });
+                          }}
+                          className="flex flex-col items-center justify-center w-40 h-40 rounded-2xl bg-white border-2 border-blue-100 shadow-md shadow-blue-50 hover:border-blue-500 hover:shadow-lg transition-all group cursor-pointer text-center p-4"
+                        >
+                          <KeyboardIcon className="w-10 h-10 text-blue-500 mb-2 group-hover:scale-110 transition-transform" />
+                          <span className="text-sm font-semibold text-slate-800 mb-1">Registro Manual</span>
+                        </button>
+                      </div>
                       <p className="text-xs text-slate-400 font-mono text-center">
-                        Requiere buena iluminación para OCR.
+                        Requiere buena iluminación para OCR o ingreso manual.
                       </p>
                     </motion.div>
                   )}
@@ -216,17 +208,19 @@ export default function App() {
                     </motion.div>
                   )}
 
-                  {selectedImage && !isCameraActive && (
+                  {(selectedImage || isManualEntry) && !isCameraActive && (
                     <motion.div key="processing-view" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="flex flex-col gap-6">
-                      <div className="relative rounded-xl overflow-hidden shadow-inner border border-slate-200 bg-slate-100 flex justify-center items-center min-h-[220px]">
-                        <img src={selectedImage} alt="ID Preview" className="max-w-full max-h-[300px] object-contain rounded-lg" />
-                        {isProcessing && (
-                          <div className="absolute inset-0 bg-slate-900/60 backdrop-blur-sm flex flex-col items-center justify-center text-white">
-                            <ScanLine className="w-12 h-12 animate-pulse mb-4" />
-                            <p className="font-mono text-sm tracking-wider">EJECUTANDO OCR...</p>
-                          </div>
-                        )}
-                      </div>
+                      {!isManualEntry && selectedImage && (
+                        <div className="relative rounded-xl overflow-hidden shadow-inner border border-slate-200 bg-slate-100 flex justify-center items-center min-h-[220px]">
+                          <img src={selectedImage} alt="ID Preview" className="max-w-full max-h-[300px] object-contain rounded-lg" />
+                          {isProcessing && (
+                            <div className="absolute inset-0 bg-slate-900/60 backdrop-blur-sm flex flex-col items-center justify-center text-white">
+                              <ScanLine className="w-12 h-12 animate-pulse mb-4" />
+                              <p className="font-mono text-sm tracking-wider">EJECUTANDO OCR...</p>
+                            </div>
+                          )}
+                        </div>
+                      )}
 
                       {error && (
                         <div className="p-4 rounded-lg bg-red-50 border border-red-100 flex items-start gap-3 text-red-800">
@@ -242,10 +236,33 @@ export default function App() {
                             <h3 className="font-semibold text-emerald-900">Paciente Identificado</h3>
                           </div>
                           <div className="grid grid-cols-2 gap-x-4 mb-2">
-                            <DataField label="Nombres" value={extractedData.names} />
-                            <DataField label="Apellidos" value={extractedData.surnames} />
-                            <DataField label="Cédula" value={extractedData.idNumber} />
-                            <DataField label="Fecha Nac." value={extractedData.dateOfBirth} />
+                            {isManualEntry ? (
+                              <>
+                                <div className="mb-4 bg-white border border-emerald-100 rounded-lg p-3">
+                                  <span className="text-[10px] text-emerald-600 font-bold block uppercase tracking-wider mb-1">Nombres</span>
+                                  <input type="text" className="w-full text-sm font-semibold text-slate-700 font-mono bg-transparent outline-none" placeholder="EJ. JUAN" value={extractedData.names} onChange={e => setExtractedData({...extractedData, names: e.target.value})} />
+                                </div>
+                                <div className="mb-4 bg-white border border-emerald-100 rounded-lg p-3">
+                                  <span className="text-[10px] text-emerald-600 font-bold block uppercase tracking-wider mb-1">Apellidos</span>
+                                  <input type="text" className="w-full text-sm font-semibold text-slate-700 font-mono bg-transparent outline-none" placeholder="EJ. PÉREZ" value={extractedData.surnames} onChange={e => setExtractedData({...extractedData, surnames: e.target.value})} />
+                                </div>
+                                <div className="mb-4 bg-white border border-emerald-100 rounded-lg p-3">
+                                  <span className="text-[10px] text-emerald-600 font-bold block uppercase tracking-wider mb-1">Cédula</span>
+                                  <input type="text" className="w-full text-sm font-semibold text-slate-700 font-mono bg-transparent outline-none" placeholder="EJ. V 12.345.678" value={extractedData.idNumber} onChange={e => setExtractedData({...extractedData, idNumber: e.target.value})} />
+                                </div>
+                                <div className="mb-4 bg-white border border-emerald-100 rounded-lg p-3">
+                                  <span className="text-[10px] text-emerald-600 font-bold block uppercase tracking-wider mb-1">Fecha Nac.</span>
+                                  <input type="text" className="w-full text-sm font-semibold text-slate-700 font-mono bg-transparent outline-none" placeholder="EJ. 01/01/1990" value={extractedData.dateOfBirth} onChange={e => setExtractedData({...extractedData, dateOfBirth: e.target.value})} />
+                                </div>
+                              </>
+                            ) : (
+                              <>
+                                <DataField label="Nombres" value={extractedData.names} />
+                                <DataField label="Apellidos" value={extractedData.surnames} />
+                                <DataField label="Cédula" value={extractedData.idNumber} />
+                                <DataField label="Fecha Nac." value={extractedData.dateOfBirth} />
+                              </>
+                            )}
                           </div>
                           
                           <button 
@@ -259,8 +276,8 @@ export default function App() {
                       ) : (
                         <div className="flex gap-3">
                            {error && !isProcessing && (
-                             <button onClick={handleReset} disabled={isProcessing} className="flex-1 py-3 border border-slate-300 font-medium text-slate-700 rounded-lg hover:bg-slate-50 disabled:opacity-50">
-                               Reintentar
+                             <button onClick={() => { setIsManualEntry(false); handleReset(); }} disabled={isProcessing} className="flex-1 py-3 border border-slate-300 font-medium text-slate-700 rounded-lg hover:bg-slate-50 disabled:opacity-50">
+                               Reintentar OCR
                              </button>
                            )}
                            {isProcessing && (
@@ -299,8 +316,11 @@ export default function App() {
                      </p>
                      
                      <div className="flex w-full gap-3">
-                       <button onClick={() => setCurrentStep(1)} className="flex-1 py-3 text-slate-600 font-medium border border-slate-300 rounded-xl hover:bg-white">
+                       <button onClick={() => setCurrentStep(1)} className="flex-[0.5] py-3 text-slate-600 font-medium border border-slate-300 rounded-xl hover:bg-white text-sm">
                          Volver
+                       </button>
+                       <button onClick={() => setCurrentStep(3)} className="flex-[0.5] py-3 text-rose-600 font-bold border-2 border-rose-200 rounded-xl hover:bg-rose-100 text-sm">
+                         Omitir
                        </button>
                        <button 
                          onClick={() => setIsRPPGActive(true)}
@@ -328,46 +348,29 @@ export default function App() {
             </div>
           )}
 
-          {/* STAGE 3: Entrevista de Seguro (New) */}
+          {/* STAGE 3: Unified Interview */}
           {currentStep === 3 && (
             <motion.div key="step3" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="flex flex-col h-full bg-slate-50">
-               <InsuranceClaimInterview 
-                 onComplete={(data) => {
-                   setInsuranceData(data);
-                   setCurrentStep(4);
-                 }}
-               />
-               <div className="p-4">
-                 <button onClick={() => setCurrentStep(4)} className="w-full py-2 text-sm text-slate-500 font-medium hover:underline">
-                   Saltar paso (omitir encuesta de seguro)
-                 </button>
-               </div>
-            </motion.div>
-          )}
-
-          {/* STAGE 4: Encuesta de Síntomas (Renumbered from 3) */}
-          {currentStep === 4 && (
-            <motion.div key="step4" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="flex flex-col h-full bg-slate-50">
                <SymptomInterview 
                  onComplete={(collectedSymptoms) => {
                    setSymptoms(collectedSymptoms);
                    if (vitalSigns && patientPhoto) {
                      handleAnalyzeTriage(collectedSymptoms, vitalSigns, patientPhoto);
                    }
-                   setCurrentStep(5);
+                   setCurrentStep(4);
                  }}
                />
                <div className="p-4">
-                 <button onClick={() => setCurrentStep(5)} className="w-full py-2 text-sm text-slate-500 font-medium hover:underline">
-                   Saltar paso (omitir síntomas)
+                 <button onClick={() => setCurrentStep(4)} className="w-full py-2 text-sm text-slate-500 font-medium hover:underline">
+                   Saltar paso (omitir entrevista)
                  </button>
                </div>
             </motion.div>
           )}
 
-          {/* STAGE 5: Resumen Final y Triage (Renumbered from 4) */}
-          {currentStep === 5 && (
-             <div className="flex flex-col h-full" key="step5">
+          {/* STAGE 4: Resumen Final y Triage */}
+          {currentStep === 4 && (
+             <div className="flex flex-col h-full" key="step4">
                {isAnalyzingTriage ? (
                   <div className="flex flex-col h-full items-center justify-center p-12 py-24">
                      <ScanLine className="w-16 h-16 text-emerald-500 animate-pulse mb-6" />
@@ -383,7 +386,7 @@ export default function App() {
                        Volver a intentar
                      </button>
                    </div>
-               ) : triageResult && extractedData && vitalSigns ? (
+               ) : triageResult && extractedData ? (
                  <>
                    <div className={`p-6 md:p-8 text-white text-center ${
                      triageResult.triageLevel.toLowerCase().includes('rojo') ? 'bg-red-600' :
@@ -447,6 +450,7 @@ export default function App() {
                        </div>
                      </div>
 
+                     {vitalSigns && (
                      <div className="border border-slate-200 rounded-xl p-5 bg-rose-50 shadow-sm relative overflow-hidden">
                        <div className="absolute top-0 left-0 w-1 h-full bg-rose-500"></div>
                        <h3 className="text-sm font-bold uppercase tracking-wider text-rose-500 mb-4 flex items-center gap-2">
@@ -516,6 +520,7 @@ export default function App() {
                           </ResponsiveContainer>
                        </div>
                      </div>
+                     )}
 
                      <button 
                         onClick={resetAll}

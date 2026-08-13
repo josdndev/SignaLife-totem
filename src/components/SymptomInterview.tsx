@@ -19,45 +19,18 @@ export function SymptomInterview({ onComplete }: SymptomInterviewProps) {
   const [isLoading, setIsLoading] = useState(false);
   const [isDone, setIsDone] = useState(false);
   const [isListening, setIsListening] = useState(false);
+  const [micError, setMicError] = useState<string | null>(null);
   const [showKeyboard, setShowKeyboard] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
-  const recognitionRef = useRef<any>(null);
+  const mediaRecorderRef = useRef<MediaRecorder | null>(null);
+  const audioChunksRef = useRef<Blob[]>([]);
   const keyboardRef = useRef<any>(null);
+  const didInit = useRef(false);
 
   useEffect(() => {
-    // Initial fetch to start conversation
+    if (didInit.current) return;
+    didInit.current = true;
     requestDoctorResponse([]);
-    
-    // Setup Speech Recognition
-    const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
-    if (SpeechRecognition) {
-      const recognition = new SpeechRecognition();
-      recognition.lang = 'es-ES';
-      recognition.continuous = false;
-      recognition.interimResults = false; // Solo resultados finales para evitar duplicados en el teclado
-      
-      recognition.onresult = (event: any) => {
-        let finalTranscript = '';
-        for (let i = event.resultIndex; i < event.results.length; i++) {
-          if (event.results[i].isFinal) {
-            finalTranscript += event.results[i][0].transcript;
-          }
-        }
-        if (finalTranscript) {
-          setInputValue(prev => {
-            const newVal = prev + (prev.endsWith(" ") ? "" : " ") + finalTranscript.trim();
-            if (keyboardRef.current) keyboardRef.current.setInput(newVal);
-            return newVal;
-          });
-        }
-      };
-      
-      recognition.onstart = () => setIsListening(true);
-      recognition.onend = () => setIsListening(false);
-      recognition.onerror = () => setIsListening(false);
-      
-      recognitionRef.current = recognition;
-    }
   }, []);
 
   useEffect(() => {
@@ -86,8 +59,8 @@ export function SymptomInterview({ onComplete }: SymptomInterviewProps) {
         const data = await response.json();
         
         let replyTxt = data.reply;
-        if (replyTxt.includes("TRIAGE_COMPLETE") || replyTxt.includes("TRIAGE_COMPLETE.")) {
-          replyTxt = replyTxt.replace(/TRIAGE_COMPLETE\.?/g, '').trim();
+        if (replyTxt.includes("INTERVIEW_COMPLETE") || replyTxt.includes("INTERVIEW_COMPLETE.")) {
+          replyTxt = replyTxt.replace(/INTERVIEW_COMPLETE\.?/g, '').trim();
           setIsDone(true);
           if (replyTxt) {
               setMessages(prev => [...prev, { role: 'model', content: replyTxt }]);
@@ -113,7 +86,7 @@ export function SymptomInterview({ onComplete }: SymptomInterviewProps) {
     if (!inputValue.trim() || isLoading) return;
     
     const userMessage: ChatMessage = { role: 'user', content: inputValue.trim() };
-    const maxTriageQuestions = 7;
+    const maxTriageQuestions = 10;
     const currentQCount = messages.filter(m => m.role === 'model').length;
 
     const updatedHistory = [...messages, userMessage];
@@ -142,11 +115,65 @@ export function SymptomInterview({ onComplete }: SymptomInterviewProps) {
     onComplete(calculateFullSymptoms());
   };
 
-  const toggleDictation = () => {
+  const toggleDictation = async () => {
     if (isListening) {
-      recognitionRef.current?.stop();
+      mediaRecorderRef.current?.stop();
+      setIsListening(false);
     } else {
-      recognitionRef.current?.start();
+      try {
+        setMicError(null);
+        const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+        const mediaRecorder = new MediaRecorder(stream);
+        audioChunksRef.current = [];
+
+        mediaRecorder.ondataavailable = (event) => {
+          if (event.data.size > 0) {
+            audioChunksRef.current.push(event.data);
+          }
+        };
+
+        mediaRecorder.onstop = async () => {
+          setIsLoading(true);
+          setMicError(null);
+          try {
+            const audioBlob = new Blob(audioChunksRef.current, { type: 'audio/webm' });
+            const reader = new FileReader();
+            reader.readAsDataURL(audioBlob);
+            reader.onloadend = async () => {
+              const base64Audio = reader.result as string;
+              const res = await fetch('/api/transcribe', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ audioBase64: base64Audio, mimeType: 'audio/webm' })
+              });
+              
+              if (!res.ok) throw new Error("Error en transcripción");
+              const data = await res.json();
+              if (data.text) {
+                setInputValue(prev => {
+                  const newVal = prev + (prev.endsWith(" ") ? "" : " ") + data.text.trim();
+                  if (keyboardRef.current) keyboardRef.current.setInput(newVal);
+                  return newVal;
+                });
+              }
+            };
+          } catch (e: any) {
+             console.error("Error transcribiendo audio:", e);
+             setMicError("transcribe-error");
+          } finally {
+             setIsLoading(false);
+             stream.getTracks().forEach(track => track.stop());
+          }
+        };
+
+        mediaRecorder.start();
+        mediaRecorderRef.current = mediaRecorder;
+        setIsListening(true);
+      } catch (e: any) {
+        console.error("Error al acceder al micrófono:", e);
+        setMicError("no-mic-access");
+        setIsListening(false);
+      }
     }
   };
 
@@ -158,9 +185,9 @@ export function SymptomInterview({ onComplete }: SymptomInterviewProps) {
     <div className="flex flex-col h-full bg-slate-50 min-h-[500px]">
       <div className="p-4 md:p-8 bg-emerald-600 text-white flex flex-col items-center">
         <img src="/logo.png" alt="Logo" className="h-16 w-auto mb-3 object-contain drop-shadow-md bg-white rounded-xl p-2" />
-        <h2 className="text-xl md:text-2xl font-semibold tracking-tight">Evaluación Médica Automatizada</h2>
+        <h2 className="text-xl md:text-2xl font-semibold tracking-tight">Entrevista Clínica y de Seguro</h2>
         <p className="text-emerald-100 mt-2 font-mono text-sm max-w-sm text-center">
-          Responde estas breves preguntas para que la IA determine su triage.
+          Responde estas breves preguntas para el triage médico y la declaración del siniestro.
         </p>
       </div>
       
@@ -249,8 +276,8 @@ export function SymptomInterview({ onComplete }: SymptomInterviewProps) {
                   }}
                   onKeyDown={e => e.key === 'Enter' && handleSend()}
                   disabled={isLoading}
-                  placeholder={isListening ? "Escuchando..." : "Escribe o usa el micrófono..."}
-                  className="flex-1 bg-slate-50 border border-slate-200 rounded-full px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent transition-all disabled:opacity-50"
+                  placeholder={isListening ? "Escuchando..." : micError ? `Error Mic: ${micError}` : "Escribe o usa el micrófono..."}
+                  className={`flex-1 bg-slate-50 border ${micError ? 'border-red-400' : 'border-slate-200'} rounded-full px-4 py-3 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-transparent transition-all disabled:opacity-50`}
                   autoFocus
                 />
                 <button

@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { ScanLine, RotateCcw, AlertCircle, FileText, Camera, Activity, HeartPulse, Check, UserPlus, Wind, ActivitySquare, MessageCircle, Keyboard as KeyboardIcon } from 'lucide-react';
+import { ScanLine, RotateCcw, AlertCircle, FileText, Camera, Activity, HeartPulse, Check, UserPlus, Wind, ActivitySquare, MessageCircle, Keyboard as KeyboardIcon, ArrowLeft, ExternalLink } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { ResponsiveContainer, LineChart, Line, YAxis, Tooltip } from 'recharts';
 import { DataField } from './components/DataField';
@@ -7,10 +7,13 @@ import { LiveCamera } from './components/LiveCamera';
 import { RPPGCamera } from './components/RPPGCamera';
 import { SymptomInterview } from './components/SymptomInterview';
 import { EmergencyLetter } from './components/EmergencyLetter';
+import { LandingPage } from './components/LandingPage';
 import type { IDData, VitalSigns } from './types';
 
 export default function App() {
+  const [view, setView] = useState<'landing' | 'kiosk'>('landing');
   const [currentStep, setCurrentStep] = useState<1 | 2 | 3 | 4>(1);
+
 
   // Stage 1: ID
   const [isManualEntry, setIsManualEntry] = useState(false);
@@ -108,25 +111,45 @@ export default function App() {
     setCurrentStep(1);
   };
 
+  if (view === 'landing') {
+    return <LandingPage onStartDemo={() => setView('kiosk')} />;
+  }
+
   return (
-    <div className="min-h-screen bg-slate-50 flex flex-col items-center p-4 font-sans text-slate-900 pb-12 w-full">
+    <div className="min-h-screen bg-slate-950 flex flex-col items-center p-4 font-sans text-slate-100 pb-12 w-full relative">
+      {/* Top Banner Navigation back to Landing */}
+      <div className="w-full max-w-4xl flex items-center justify-between py-3 px-4 mb-4 bg-slate-900/90 border border-emerald-500/20 rounded-2xl backdrop-blur-md shadow-xl">
+        <button 
+          onClick={() => setView('landing')} 
+          className="flex items-center gap-2 text-xs font-bold text-slate-300 hover:text-emerald-400 transition"
+        >
+          <ArrowLeft className="w-4 h-4 text-emerald-400" />
+          <span>Volver a la Presentación</span>
+        </button>
+        <div className="flex items-center gap-2">
+          <span className="w-2 h-2 rounded-full bg-emerald-400 animate-ping"></span>
+          <span className="text-[11px] font-semibold text-emerald-400 uppercase tracking-widest">Totem Demo Activo</span>
+        </div>
+      </div>
+
       {/* Header & Stepper */}
-      <div className="w-full max-w-3xl mb-8 mt-4 md:mt-8 flex flex-col items-center">
-        <img src="/logo.png" alt="Logo Pre-Triage" className="h-16 w-auto mb-4 object-contain drop-shadow-md" />
-        <h1 className="text-3xl font-bold tracking-tight text-slate-900 mb-6 text-center">
+      <div className="w-full max-w-3xl mb-8 mt-2 flex flex-col items-center">
+        <img src="/logo.png" alt="Logo Pre-Triage" className="h-16 w-auto mb-4 object-contain drop-shadow-md brightness-110" />
+        <h1 className="text-3xl font-bold tracking-tight text-white mb-6 text-center font-poppins">
           Estación Pre-Triage Autónoma
         </h1>
         <div className="flex items-center justify-between relative px-2 w-full">
-          <div className="absolute left-0 top-1/2 -translate-y-1/2 w-full h-1 bg-slate-200 -z-10 rounded-full"></div>
-          <div className="absolute left-0 top-1/2 -translate-y-1/2 h-1 bg-emerald-600 -z-10 rounded-full transition-all duration-500" 
+          <div className="absolute left-0 top-1/2 -translate-y-1/2 w-full h-1 bg-slate-800 -z-10 rounded-full"></div>
+          <div className="absolute left-0 top-1/2 -translate-y-1/2 h-1 bg-emerald-500 -z-10 rounded-full transition-all duration-500" 
             style={{ width: currentStep === 1 ? '0%' : currentStep === 2 ? '33%' : currentStep === 3 ? '66%' : '100%' }}></div>
           
-          <div className={`flex flex-col items-center gap-2 ${currentStep >= 1 ? 'text-emerald-600' : 'text-slate-400'}`}>
-            <div className={`w-10 h-10 rounded-full flex items-center justify-center font-bold text-lg mb-1 transition-colors ${currentStep >= 1 ? 'bg-emerald-600 text-white shadow-md' : 'bg-slate-200 text-slate-500'}`}>
+          <div className={`flex flex-col items-center gap-2 ${currentStep >= 1 ? 'text-emerald-400' : 'text-slate-500'}`}>
+            <div className={`w-10 h-10 rounded-full flex items-center justify-center font-bold text-lg mb-1 transition-colors ${currentStep >= 1 ? 'bg-emerald-500 text-slate-950 shadow-lg shadow-emerald-500/30' : 'bg-slate-800 text-slate-400'}`}>
               <ScanLine className="w-5 h-5" />
             </div>
             <span className="text-[10px] font-semibold uppercase tracking-wider hidden sm:block">Identidad</span>
           </div>
+
           
           <div className={`flex flex-col items-center gap-2 ${currentStep >= 2 ? 'text-emerald-600' : 'text-slate-400'}`}>
             <div className={`w-10 h-10 rounded-full flex items-center justify-center font-bold text-lg mb-1 transition-colors ${currentStep >= 2 ? 'bg-emerald-600 text-white shadow-md' : 'bg-slate-200 text-slate-500'}`}>

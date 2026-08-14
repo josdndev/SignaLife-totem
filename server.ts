@@ -14,7 +14,7 @@ type Schema = any;
 
 async function startServer() {
   const app = express();
-  const PORT = 3000;
+  const PORT = process.env.PORT || 3000;
 
   const RESIDENT_MODEL = "gemma3:4b"; // Gemma 4 light equivalent (supports vision)
   const SPECIALIST_MODEL = "medgemma"; // Especialista médico estricto

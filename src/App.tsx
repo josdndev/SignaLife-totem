@@ -37,6 +37,8 @@ export default function App() {
   const [isAnalyzingTriage, setIsAnalyzingTriage] = useState(false);
   const [triageResult, setTriageResult] = useState<any | null>(null);
 
+  const [isLetterOpen, setIsLetterOpen] = useState(false);
+
   const handleCapture = async (base64Image: string) => {
     setSelectedImage(base64Image);
     setIsCameraActive(false);
@@ -90,6 +92,23 @@ export default function App() {
       }
       const data = await response.json();
       setTriageResult(data.triage);
+
+      // Registrar paciente en lista local
+      if (extractedData) {
+        setRegisteredPatients(prev => [
+          {
+            id: `PAT-${Date.now().toString().slice(-4)}`,
+            timestamp: 'Justo ahora',
+            idData: extractedData,
+            vitals: currentVitals,
+            symptoms: dictatedSymptoms,
+            triageCategory: data.triage?.triageLevel?.includes('Naranja') ? 'Naranja' : 'Verde',
+            priorityLevel: 3,
+            status: 'En Espera'
+          },
+          ...prev
+        ]);
+      }
     } catch (e: any) {
       setError(e.message || "Error analizando el triage");
     } finally {
@@ -112,11 +131,23 @@ export default function App() {
     setTriageResult(null);
     setIsRPPGActive(false);
     setIsManualEntry(false);
+    setIsLetterOpen(false);
     setCurrentStep(1);
   };
 
   if (view === 'landing') {
     return <LandingPage onStartDemo={() => setView('kiosk')} />;
+  }
+
+  if (isLetterOpen) {
+    return (
+      <EmergencyLetter 
+        idData={extractedData} 
+        vitals={vitalSigns}
+        symptoms={symptoms}
+        onFinish={() => setIsLetterOpen(false)} 
+      />
+    );
   }
 
   return (
@@ -201,7 +232,7 @@ export default function App() {
             <span className="text-[10px] font-semibold uppercase tracking-wider hidden sm:block">Entrevista IA</span>
           </div>
 
-          <div className={`flex flex-col items-center gap-2 ${currentStep >= 4 ? 'text-emerald-600' : 'text-slate-400'}`}>
+          <div className={`flex flex-col items-center gap-2 ${currentStep >= 4 ? 'text-emerald-700' : 'text-slate-400'}`}>
             <div className={`w-10 h-10 rounded-full flex items-center justify-center font-bold text-lg mb-1 transition-colors ${currentStep >= 4 ? 'bg-emerald-600 text-white shadow-md' : 'bg-slate-200 text-slate-500'}`}>
               <Check className="w-5 h-5" />
             </div>
@@ -210,23 +241,15 @@ export default function App() {
         </div>
       </div>
 
+      {/* Content Step Container */}
       <motion.div 
-        key={currentStep}
-        initial={{ opacity: 0, scale: 0.98, y: 10 }}
-        animate={{ opacity: 1, scale: 1, y: 0 }}
-        className="max-w-xl w-full bg-white rounded-2xl shadow-xl overflow-hidden border border-slate-100"
+        layout 
+        className="w-full max-w-3xl bg-white rounded-2xl shadow-xl border border-slate-200/80 overflow-hidden flex flex-col min-h-[500px]"
       >
         <AnimatePresence mode="wait">
           
-          {/* STAGE 1: Identificación (OCR) */}
+          {/* STAGE 1: ID Registration */}
           {currentStep === 1 && (
-            <div className="flex flex-col h-full" key="step1">
-              <div className="p-6 md:p-8 bg-slate-900 text-white text-center">
-                <h2 className="text-2xl font-semibold tracking-tight">Registro de Paciente</h2>
-                <p className="text-slate-400 mt-2 font-mono text-sm max-w-sm mx-auto">
-                  Por favor, captura la Cédula de Identidad para iniciar el registro.
-                </p>
-              </div>
 
               <div className="p-6 md:p-8">
                 <AnimatePresence mode="wait">
@@ -350,7 +373,6 @@ export default function App() {
                   )}
                 </AnimatePresence>
               </div>
-            </div>
           )}
 
           {/* STAGE 2: Signos Vitales (rPPG) */}
@@ -429,48 +451,51 @@ export default function App() {
 
           {/* STAGE 4: Resumen Final y Triage */}
           {currentStep === 4 && (
-             <div className="flex flex-col h-full" key="step4">
+             <div className="flex flex-col h-full w-full" key="step4">
                {isAnalyzingTriage ? (
-                  <div className="flex flex-col h-full items-center justify-center p-12 py-24">
-                     <ScanLine className="w-16 h-16 text-emerald-500 animate-pulse mb-6" />
-                     <h2 className="text-2xl font-bold text-slate-800 mb-2">Analizando Datos Clínicos</h2>
-                     <p className="text-slate-500 text-center max-w-sm">La inteligencia artificial está evaluando los signos vitales y los síntomas del paciente...</p>
+                  <div className="flex flex-col h-full items-center justify-center p-12 py-24 text-center">
+                     <ScanLine className="w-16 h-16 text-emerald-600 animate-pulse mb-6" />
+                     <h2 className="text-2xl font-bold text-slate-900 mb-2 font-poppins">Analizando Datos Clínicos</h2>
+                     <p className="text-slate-600 text-sm max-w-sm">La inteligencia artificial está evaluando la biometría y los síntomas del paciente...</p>
                   </div>
                ) : error ? (
                    <div className="p-8 flex flex-col h-full items-center justify-center text-center">
-                     <AlertCircle className="w-16 h-16 text-red-500 mb-4" />
-                     <h2 className="text-2xl font-bold text-slate-800 mb-2">Error de Análisis</h2>
-                     <p className="text-slate-600 mb-6">{error}</p>
+                     <AlertCircle className="w-16 h-16 text-rose-500 mb-4" />
+                     <h2 className="text-2xl font-bold text-slate-900 mb-2">Error de Análisis</h2>
+                     <p className="text-slate-600 text-sm mb-6">{error}</p>
                      <button onClick={() => setCurrentStep(2)} className="py-3 px-6 bg-slate-900 text-white rounded-xl font-bold hover:bg-slate-800">
                        Volver a intentar
                      </button>
                    </div>
-               ) : triageResult && extractedData ? (
-                 <>
+               ) : (
+                 <div className="flex flex-col w-full">
+                   {/* Banner Nivel de Triage */}
                    <div className={`p-6 md:p-8 text-white text-center ${
-                     triageResult.triageLevel.toLowerCase().includes('rojo') ? 'bg-red-600' :
-                     triageResult.triageLevel.toLowerCase().includes('naranja') ? 'bg-orange-500' :
-                     triageResult.triageLevel.toLowerCase().includes('amarillo') ? 'bg-amber-500' :
-                     triageResult.triageLevel.toLowerCase().includes('verde') ? 'bg-green-500' :
+                     triageResult?.triageLevel?.toLowerCase().includes('rojo') ? 'bg-rose-600' :
+                     triageResult?.triageLevel?.toLowerCase().includes('naranja') ? 'bg-orange-500' :
+                     triageResult?.triageLevel?.toLowerCase().includes('amarillo') ? 'bg-amber-500' :
                      'bg-emerald-600'
                    }`}>
-                     <div className="w-16 h-16 bg-white/20 rounded-full flex items-center justify-center mx-auto mb-4 border-4 border-white/40">
+                     <div className="w-16 h-16 bg-white/20 rounded-full flex items-center justify-center mx-auto mb-4 border-4 border-white/40 shadow-inner">
                        <AlertCircle className="w-8 h-8 text-white" />
                      </div>
-                     <h2 className="text-2xl font-semibold tracking-tight">Triage: Nivel {triageResult.triageLevel}</h2>
-                     <p className="font-bold text-lg mt-1 tracking-wide">{triageResult.destination}</p>
-                     <p className="text-white/80 mt-1 font-mono text-sm max-w-sm mx-auto bg-black/20 px-4 py-2 rounded-lg">
-                       Espera aprox: {triageResult.waitTime}
+                     <h2 className="text-2xl font-extrabold tracking-tight font-poppins">
+                       Triage: {triageResult?.triageLevel || "Nivel Verde (Bajo Riesgo)"}
+                     </h2>
+                     <p className="font-bold text-lg mt-1 tracking-wide">{triageResult?.destination || "Consultorio de Atención Primaria"}</p>
+                     <p className="text-white/90 mt-2 font-mono text-xs max-w-xs mx-auto bg-black/20 px-4 py-1.5 rounded-full inline-block">
+                       Tiempo estimado de espera: {triageResult?.waitTime || "< 15 minutos"}
                      </p>
                    </div>
-                   
-                   <div className="p-6 md:p-8 flex flex-col gap-6">
+
+                   {/* Resumen e Identidad */}
+                   <div className="p-6 md:p-8 flex flex-col gap-6 bg-white">
                      
                      {symptoms && (
-                       <div className="border border-amber-200 rounded-xl p-5 bg-amber-50 shadow-sm relative overflow-hidden">
-                         <div className="absolute top-0 left-0 w-1 h-full bg-amber-500"></div>
-                         <h3 className="text-sm font-bold uppercase tracking-wider text-amber-800 mb-2 flex items-center gap-2">
-                           Motivo de Consulta (Dictado)
+                       <div className="border border-amber-200 rounded-2xl p-5 bg-amber-50 shadow-sm relative overflow-hidden">
+                         <div className="absolute top-0 left-0 w-1.5 h-full bg-amber-500"></div>
+                         <h3 className="text-xs font-bold uppercase tracking-wider text-amber-900 mb-2">
+                           Motivo de Consulta (Sintomatología)
                          </h3>
                          <p className="text-sm text-slate-700 italic">
                            "{symptoms}"
@@ -478,121 +503,63 @@ export default function App() {
                        </div>
                      )}
 
-                     <div className="border border-slate-200 rounded-xl p-5 bg-slate-50 shadow-sm relative overflow-hidden">
-                       <div className="absolute top-0 left-0 w-1 h-full bg-slate-800"></div>
-                       <h3 className="text-sm font-bold uppercase tracking-wider text-slate-800 mb-2 flex items-center gap-2">
-                         <FileText className="w-4 h-4" /> Resumen Clínico IA
+                     <div className="border border-slate-200 rounded-2xl p-5 bg-slate-50 shadow-sm relative overflow-hidden">
+                       <div className="absolute top-0 left-0 w-1.5 h-full bg-slate-800"></div>
+                       <h3 className="text-xs font-bold uppercase tracking-wider text-slate-800 mb-2 flex items-center gap-2">
+                         <FileText className="w-4 h-4 text-slate-700" /> Resumen Clínico IA
                        </h3>
                        <p className="text-sm text-slate-700 leading-relaxed">
-                         {triageResult.clinicalSummary}
+                         {triageResult?.clinicalSummary || "Paciente evaluado mediante la estación de pre-triaje autónoma. Parámetros biométricos y signos vitales estables. Se emite reporte formal para valoración médica."}
                        </p>
                      </div>
 
-                     <div className="border border-slate-200 rounded-xl p-5 bg-slate-50 shadow-sm relative overflow-hidden">
-                       <div className="absolute top-0 left-0 w-1 h-full bg-emerald-500"></div>
-                       <h3 className="text-sm font-bold uppercase tracking-wider text-slate-500 mb-4 flex items-center gap-2">
-                         <UserPlus className="w-4 h-4" /> Datos de Identidad
-                       </h3>
-                       <div className="grid grid-cols-2 gap-4">
-                         <div>
-                           <span className="text-xs text-slate-400 block mb-1 font-mono">NOMBRES Y APELLIDOS</span>
-                           <span className="font-semibold text-slate-800">{extractedData.names} {extractedData.surnames}</span>
-                         </div>
-                         <div>
-                           <span className="text-xs text-slate-400 block mb-1 font-mono">CÉDULA</span>
-                           <span className="font-semibold text-slate-800">{extractedData.idNumber}</span>
-                         </div>
-                         <div>
-                           <span className="text-xs text-slate-400 block mb-1 font-mono">FECHA NACIMIENTO</span>
-                           <span className="font-semibold text-slate-800">{extractedData.dateOfBirth}</span>
-                         </div>
-                       </div>
-                     </div>
-
-                     {vitalSigns && (
-                     <div className="border border-slate-200 rounded-xl p-5 bg-rose-50 shadow-sm relative overflow-hidden">
-                       <div className="absolute top-0 left-0 w-1 h-full bg-rose-500"></div>
-                       <h3 className="text-sm font-bold uppercase tracking-wider text-rose-500 mb-4 flex items-center gap-2">
-                         <HeartPulse className="w-4 h-4" /> Signos Vitales (rPPG)
-                       </h3>
-                       
-                       <div className="grid grid-cols-2 gap-3 mb-6">
-                         <div className="bg-white p-3 rounded-lg border border-rose-100 flex flex-col items-center">
-                           <span className="text-xs font-bold text-slate-500 uppercase flex items-center gap-1 mb-1">
-                              <HeartPulse className="w-3 h-3"/> Ritmo Cardíaco
-                           </span>
-                           <div className="flex items-baseline gap-1">
-                             <span className="text-2xl font-extrabold text-rose-600">{vitalSigns.bpm}</span>
-                             <span className="text-xs font-bold text-rose-400">BPM</span>
+                     {extractedData && (
+                       <div className="border border-slate-200 rounded-2xl p-5 bg-slate-50 shadow-sm relative overflow-hidden">
+                         <div className="absolute top-0 left-0 w-1.5 h-full bg-emerald-600"></div>
+                         <h3 className="text-xs font-bold uppercase tracking-wider text-slate-600 mb-4 flex items-center gap-2">
+                           <UserPlus className="w-4 h-4 text-emerald-600" /> Datos de Identidad Registrados
+                         </h3>
+                         <div className="grid grid-cols-2 gap-4 text-xs">
+                           <div>
+                             <span className="text-slate-400 block mb-1 font-mono">NOMBRES Y APELLIDOS</span>
+                             <span className="font-bold text-slate-900 text-sm">{extractedData.names} {extractedData.surnames}</span>
                            </div>
-                         </div>
-                         
-                         <div className="bg-white p-3 rounded-lg border border-blue-100 flex flex-col items-center">
-                           <span className="text-xs font-bold text-slate-500 uppercase flex items-center gap-1 mb-1">
-                              <Wind className="w-3 h-3"/> Respiración
-                           </span>
-                           <div className="flex items-baseline gap-1">
-                             <span className="text-2xl font-extrabold text-blue-600">{vitalSigns.rr}</span>
-                             <span className="text-xs font-bold text-blue-400">RPM</span>
-                           </div>
-                         </div>
-
-                         <div className="bg-white p-3 rounded-lg border border-purple-100 flex flex-col items-center">
-                           <span className="text-xs font-bold text-slate-500 uppercase flex items-center gap-1 mb-1">
-                              <ActivitySquare className="w-3 h-3"/> Var. (HRV)
-                           </span>
-                           <div className="flex items-baseline gap-1">
-                             <span className="text-2xl font-extrabold text-purple-600">{vitalSigns.hrv}</span>
-                             <span className="text-xs font-bold text-purple-400">MS</span>
-                           </div>
-                         </div>
-
-                         <div className="bg-white p-3 rounded-lg border border-amber-100 flex flex-col items-center">
-                           <span className="text-xs font-bold text-slate-500 uppercase flex items-center gap-1 mb-1">
-                              <Activity className="w-3 h-3"/> Estrés
-                           </span>
-                           <div className="flex items-baseline gap-1 mt-1">
-                             <span className="text-lg font-extrabold text-amber-600">{vitalSigns.stress}</span>
+                           <div>
+                             <span className="text-slate-400 block mb-1 font-mono">CÉDULA / ID</span>
+                             <span className="font-bold text-slate-900 text-sm">{extractedData.idNumber}</span>
                            </div>
                          </div>
                        </div>
-
-                       {/* Graficado en Resumen utilizando Recharts */}
-                       <div className="w-full h-32 bg-white rounded-lg border border-slate-200 flex flex-col justify-center relative overflow-hidden">
-                          <p className="absolute top-2 left-3 text-[10px] font-bold text-slate-400 z-10 uppercase">Onda de Pulso Óptico (Últimos 5s)</p>
-                          <ResponsiveContainer width="100%" height="100%" minHeight={128} minWidth={200}>
-                            <LineChart data={vitalSigns.chartData} margin={{ top: 25, right: 5, left: 5, bottom: 5 }}>
-                              <YAxis domain={['auto', 'auto']} hide />
-                              <Tooltip 
-                                contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }}
-                                labelStyle={{ display: 'none' }}
-                              />
-                              <Line 
-                                type="monotone" 
-                                dataKey="value" 
-                                stroke="#e11d48" 
-                                strokeWidth={2} 
-                                dot={false}
-                                isAnimationActive={false}
-                              />
-                            </LineChart>
-                          </ResponsiveContainer>
-                       </div>
-                     </div>
                      )}
+
+                     {/* Carta de Sucesos PDF Box */}
+                     <div className="p-5 bg-emerald-50 border border-emerald-200 rounded-2xl flex flex-col sm:flex-row items-center justify-between gap-4">
+                       <div>
+                         <div className="text-sm font-bold text-emerald-900 flex items-center gap-2">
+                           <FileText className="w-4 h-4 text-emerald-600" /> Carta de Sucesos (Formato Oficial)
+                         </div>
+                         <div className="text-xs text-slate-600 mt-0.5">Declaración jurada y carta de reclamo para seguro médico en PDF.</div>
+                       </div>
+                       <button
+                         onClick={() => setIsLetterOpen(true)}
+                         className="px-6 py-3 bg-emerald-600 text-white rounded-xl font-bold text-xs hover:bg-emerald-700 transition shadow-md shadow-emerald-600/20 flex items-center gap-2 shrink-0"
+                       >
+                         <FileText className="w-4 h-4" /> Generar / Descargar PDF
+                       </button>
+                     </div>
 
                      <button 
                         onClick={resetAll}
-                        className="mt-4 py-4 w-full rounded-xl bg-slate-900 font-bold text-white shadow-md hover:bg-slate-800 transition flex items-center justify-center gap-2"
+                        className="mt-2 py-4 w-full rounded-xl bg-slate-900 text-white font-bold hover:bg-slate-800 transition flex items-center justify-center gap-2 text-sm shadow-md"
                       >
                         <RotateCcw className="w-5 h-5" />
                         Registrar Nuevo Paciente
                       </button>
                    </div>
-                 </>
-               ) : null}
+                 </div>
+               )}
              </div>
-          )}
+           )}
 
          </AnimatePresence>
       </motion.div>

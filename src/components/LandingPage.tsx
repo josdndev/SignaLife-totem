@@ -31,8 +31,6 @@ interface LandingPageProps {
 }
 
 export const LandingPage: React.FC<LandingPageProps> = ({ onStartDemo }) => {
-  const [darkMode, setDarkMode] = useState(true);
-
   const { scrollYProgress } = useScroll();
   const scaleX = useSpring(scrollYProgress, {
     stiffness: 100,
@@ -45,22 +43,16 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onStartDemo }) => {
   const opacityHero = useTransform(scrollYProgress, [0, 0.25], [1, 0.2]);
 
   return (
-    <div className={`min-h-screen font-sans selection:bg-emerald-500 selection:text-white relative overflow-x-hidden transition-colors duration-500 ${
-      darkMode ? 'bg-slate-950 text-slate-100' : 'bg-slate-50 text-slate-900'
-    }`}>
+    <div className="min-h-screen font-sans selection:bg-emerald-500 selection:text-white relative overflow-x-hidden bg-slate-50 text-slate-900">
       
       {/* Scroll Progress Bar */}
       <motion.div
-        className="fixed top-0 left-0 right-0 h-1 bg-gradient-to-r from-emerald-500 via-teal-400 to-cyan-500 z-50 origin-left"
+        className="fixed top-0 left-0 right-0 h-1 bg-gradient-to-r from-emerald-500 via-teal-500 to-cyan-500 z-50 origin-left"
         style={{ scaleX }}
       />
 
       {/* Navigation */}
-      <nav className={`fixed w-full z-40 backdrop-blur-xl border-b transition-all duration-300 ${
-        darkMode 
-          ? 'bg-slate-950/85 border-emerald-500/10 shadow-2xl' 
-          : 'bg-white/85 border-emerald-500/20 shadow-md text-slate-900'
-      }`}>
+      <nav className="fixed w-full z-40 backdrop-blur-xl border-b bg-white/90 border-slate-200/80 shadow-sm transition-all duration-300">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between h-20 items-center">
             <motion.div 
@@ -70,17 +62,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onStartDemo }) => {
               className="flex items-center gap-3 cursor-pointer"
               onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}
             >
-              <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-emerald-400 to-teal-600 flex items-center justify-center shadow-lg shadow-emerald-500/20 border border-emerald-400/30">
-                <HeartPulse className="w-6 h-6 text-slate-950 stroke-[2.5]" />
-              </div>
-              <div className="flex flex-col">
-                <span className="text-2xl font-bold tracking-tight bg-gradient-to-r from-white via-slate-100 to-slate-300 bg-clip-text text-transparent font-poppins">
-                  Signa<span className="text-emerald-400">Life</span>
-                </span>
-                <span className="text-[10px] tracking-widest text-emerald-400/80 uppercase font-semibold -mt-1">
-                  Engidea Ecosystem
-                </span>
-              </div>
+              <img src="/logo.png" alt="SignaLife Logo" className="h-12 w-auto object-contain drop-shadow-sm" />
             </motion.div>
             
             {/* Desktop Navigation */}
@@ -88,49 +70,32 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onStartDemo }) => {
               initial={{ opacity: 0, y: -10 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.6, delay: 0.1 }}
-              className="hidden lg:flex items-center space-x-8 font-medium text-slate-300 text-sm"
+              className="hidden lg:flex items-center space-x-8 font-medium text-slate-600 text-sm"
             >
-              <a href="#inicio" className="hover:text-emerald-400 transition-colors">Inicio</a>
-              <a href="#arquitectura" className="hover:text-emerald-400 transition-colors">Arquitectura 5G</a>
-              <a href="#beneficios" className="hover:text-emerald-400 transition-colors">Ecosistema 360°</a>
-              <a href="#equipo" className="hover:text-emerald-400 transition-colors">Equipo</a>
-              <a href="#contacto" className="hover:text-emerald-400 transition-colors">Contacto</a>
+              <a href="#inicio" className="hover:text-emerald-600 transition-colors">Inicio</a>
+              <a href="#arquitectura" className="hover:text-emerald-600 transition-colors">Arquitectura 5G</a>
+              <a href="#beneficios" className="hover:text-emerald-600 transition-colors">Ecosistema 360°</a>
+              <a href="#equipo" className="hover:text-emerald-600 transition-colors">Equipo</a>
+              <a href="#contacto" className="hover:text-emerald-600 transition-colors">Contacto</a>
             </motion.div>
 
-            {/* Action CTA & Theme Toggle */}
+            {/* Action CTA */}
             <motion.div 
               initial={{ opacity: 0, x: 20 }}
               animate={{ opacity: 1, x: 0 }}
               transition={{ duration: 0.6, delay: 0.2 }}
               className="flex items-center gap-3"
             >
-              {/* Theme Switcher Button */}
-              <button
-                onClick={() => setDarkMode(!darkMode)}
-                className={`p-2 rounded-xl border transition-all ${
-                  darkMode 
-                    ? 'bg-slate-900 border-slate-800 text-amber-400 hover:bg-slate-800' 
-                    : 'bg-emerald-50 border-emerald-200 text-slate-700 hover:bg-emerald-100'
-                }`}
-                title={darkMode ? 'Cambiar a Modo Claro' : 'Cambiar a Modo Oscuro'}
-              >
-                {darkMode ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />}
-              </button>
-
               <button 
                 onClick={onStartDemo}
-                className={`font-semibold transition-colors flex items-center gap-2 px-4 py-2 rounded-xl text-sm ${
-                  darkMode 
-                    ? 'text-slate-300 hover:text-white hover:bg-slate-900 border border-transparent hover:border-slate-800' 
-                    : 'text-slate-700 hover:text-slate-900 hover:bg-slate-100 border border-transparent hover:border-slate-200'
-                }`}
+                className="font-semibold transition-colors flex items-center gap-2 px-4 py-2 rounded-xl text-sm text-slate-700 hover:text-slate-900 hover:bg-slate-100 border border-transparent hover:border-slate-200"
               >
-                <UserCheck className="w-4 h-4 text-emerald-500" />
+                <UserCheck className="w-4 h-4 text-emerald-600" />
                 <span>Ingresar</span>
               </button>
               <button 
                 onClick={onStartDemo}
-                className="group relative inline-flex items-center justify-center px-6 py-2.5 text-sm font-bold text-slate-950 transition-all duration-300 bg-gradient-to-r from-emerald-400 to-teal-400 rounded-full shadow-lg shadow-emerald-500/25 hover:shadow-emerald-500/40 hover:scale-105 active:scale-95"
+                className="group relative inline-flex items-center justify-center px-6 py-2.5 text-sm font-bold text-white transition-all duration-300 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-700 hover:to-teal-700 rounded-full shadow-md shadow-emerald-600/20 hover:scale-105 active:scale-95"
               >
                 <Sparkles className="w-4 h-4 mr-2 animate-pulse" />
                 <span>Demo Directa</span>

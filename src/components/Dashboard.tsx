@@ -40,11 +40,14 @@ const MOCK_PATIENTS: RegisteredPatient[] = [
       expiryDate: '10/02/2028'
     },
     vitals: {
-      hr: 112,
+      bpm: 112,
+      hrv: 45,
       rr: 24,
+      stress: 'Elevado',
+      bp: '135/88',
       spo2: 93,
-      temp: 38.5,
-      confidence: 96,
+      glucosa: 110,
+      hba1c: 5.6,
       chartData: []
     },
     symptoms: 'Dolor torácico agudo con disnea progresiva de 2 horas de evolución.',
@@ -65,11 +68,14 @@ const MOCK_PATIENTS: RegisteredPatient[] = [
       expiryDate: '15/06/2029'
     },
     vitals: {
-      hr: 78,
+      bpm: 78,
+      hrv: 62,
       rr: 16,
+      stress: 'Normal',
+      bp: '120/80',
       spo2: 98,
-      temp: 36.6,
-      confidence: 98,
+      glucosa: 95,
+      hba1c: 5.2,
       chartData: []
     },
     symptoms: 'Malestar general y cefalea leve posterior a jornada laboral.',
@@ -90,11 +96,14 @@ const MOCK_PATIENTS: RegisteredPatient[] = [
       expiryDate: '20/01/2026'
     },
     vitals: {
-      hr: 95,
+      bpm: 95,
+      hrv: 50,
       rr: 20,
+      stress: 'Moderado',
+      bp: '128/84',
       spo2: 96,
-      temp: 37.8,
-      confidence: 95,
+      glucosa: 102,
+      hba1c: 5.4,
       chartData: []
     },
     symptoms: 'Fiebre persistente de 38°C y odinofagia intensa.',
@@ -241,9 +250,9 @@ export const Dashboard: React.FC<DashboardProps> = ({ registeredPatients }) => {
                   <td className="p-4">
                     {patient.vitals ? (
                       <div className="space-y-0.5 font-mono text-[11px]">
-                        <span className="text-emerald-400 font-bold">FC: {patient.vitals.hr} BPM</span> • 
+                        <span className="text-emerald-400 font-bold">FC: {patient.vitals.bpm} BPM</span> • 
                         <span className="text-teal-400 font-bold ml-1">SpO2: {patient.vitals.spo2}%</span> • 
-                        <span className="text-cyan-400 font-bold ml-1">T: {patient.vitals.temp}°C</span>
+                        <span className="text-cyan-400 font-bold ml-1">PA: {patient.vitals.bp}</span>
                       </div>
                     ) : (
                       <span className="text-slate-500 italic">No registrado</span>

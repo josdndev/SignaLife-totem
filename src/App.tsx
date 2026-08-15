@@ -120,25 +120,25 @@ export default function App() {
   }
 
   return (
-    <div className="min-h-screen bg-slate-950 flex flex-col items-center p-4 font-sans text-slate-100 pb-12 w-full relative">
+    <div className="min-h-screen bg-slate-50 flex flex-col items-center p-4 font-sans text-slate-900 pb-12 w-full relative">
       {/* Top Banner Navigation back to Landing */}
-      <div className="w-full max-w-4xl flex items-center justify-between py-3 px-4 mb-4 bg-slate-900/90 border border-emerald-500/20 rounded-2xl backdrop-blur-md shadow-xl">
+      <div className="w-full max-w-4xl flex items-center justify-between py-3 px-4 mb-4 bg-white border border-slate-200 rounded-2xl shadow-sm">
         <button 
           onClick={() => setView('landing')} 
-          className="flex items-center gap-2 text-xs font-bold text-slate-300 hover:text-emerald-400 transition"
+          className="flex items-center gap-2 text-xs font-bold text-slate-700 hover:text-emerald-700 transition"
         >
-          <ArrowLeft className="w-4 h-4 text-emerald-400" />
+          <ArrowLeft className="w-4 h-4 text-emerald-600" />
           <span>Volver a la Presentación</span>
         </button>
 
         {/* Tab Selection */}
-        <div className="flex items-center gap-2 bg-slate-950 p-1 rounded-xl border border-slate-800">
+        <div className="flex items-center gap-2 bg-slate-100 p-1 rounded-xl border border-slate-200">
           <button
             onClick={() => setActiveTab('pretriage')}
             className={`flex items-center gap-2 px-4 py-1.5 rounded-lg text-xs font-bold transition ${
               activeTab === 'pretriage'
-                ? 'bg-emerald-500 text-slate-950 shadow-md'
-                : 'text-slate-400 hover:text-white'
+                ? 'bg-emerald-600 text-white shadow-md'
+                : 'text-slate-600 hover:text-slate-900'
             }`}
           >
             <Stethoscope className="w-4 h-4" />
@@ -149,8 +149,8 @@ export default function App() {
             onClick={() => setActiveTab('dashboard')}
             className={`flex items-center gap-2 px-4 py-1.5 rounded-lg text-xs font-bold transition ${
               activeTab === 'dashboard'
-                ? 'bg-emerald-500 text-slate-950 shadow-md'
-                : 'text-slate-400 hover:text-white'
+                ? 'bg-emerald-600 text-white shadow-md'
+                : 'text-slate-600 hover:text-slate-900'
             }`}
           >
             <LayoutDashboard className="w-4 h-4" />
@@ -159,8 +159,8 @@ export default function App() {
         </div>
 
         <div className="flex items-center gap-2 hidden sm:flex">
-          <span className="w-2 h-2 rounded-full bg-emerald-400 animate-ping"></span>
-          <span className="text-[11px] font-semibold text-emerald-400 uppercase tracking-widest">En Línea</span>
+          <span className="w-2 h-2 rounded-full bg-emerald-600 animate-ping"></span>
+          <span className="text-[11px] font-bold text-emerald-700 uppercase tracking-widest">En Línea</span>
         </div>
       </div>
 
@@ -170,35 +170,35 @@ export default function App() {
         <>
           {/* Header & Stepper */}
           <div className="w-full max-w-3xl mb-8 mt-2 flex flex-col items-center">
-            <img src="/logo.png" alt="Logo Pre-Triage" className="h-16 w-auto mb-4 object-contain drop-shadow-md brightness-110" />
-            <h1 className="text-3xl font-bold tracking-tight text-white mb-6 text-center font-poppins">
+            <img src="/logo.png" alt="Logo Pre-Triage" className="h-16 w-auto mb-4 object-contain drop-shadow-sm" />
+            <h1 className="text-3xl font-bold tracking-tight text-slate-900 mb-6 text-center font-poppins">
               Estación Pre-Triage Autónoma
             </h1>
         <div className="flex items-center justify-between relative px-2 w-full">
-          <div className="absolute left-0 top-1/2 -translate-y-1/2 w-full h-1 bg-slate-800 -z-10 rounded-full"></div>
-          <div className="absolute left-0 top-1/2 -translate-y-1/2 h-1 bg-emerald-500 -z-10 rounded-full transition-all duration-500" 
+          <div className="absolute left-0 top-1/2 -translate-y-1/2 w-full h-1 bg-slate-200 -z-10 rounded-full"></div>
+          <div className="absolute left-0 top-1/2 -translate-y-1/2 h-1 bg-emerald-600 -z-10 rounded-full transition-all duration-500" 
             style={{ width: currentStep === 1 ? '0%' : currentStep === 2 ? '33%' : currentStep === 3 ? '66%' : '100%' }}></div>
           
-          <div className={`flex flex-col items-center gap-2 ${currentStep >= 1 ? 'text-emerald-400' : 'text-slate-500'}`}>
-            <div className={`w-10 h-10 rounded-full flex items-center justify-center font-bold text-lg mb-1 transition-colors ${currentStep >= 1 ? 'bg-emerald-500 text-slate-950 shadow-lg shadow-emerald-500/30' : 'bg-slate-800 text-slate-400'}`}>
+          <div className={`flex flex-col items-center gap-2 ${currentStep >= 1 ? 'text-emerald-700' : 'text-slate-400'}`}>
+            <div className={`w-10 h-10 rounded-full flex items-center justify-center font-bold text-lg mb-1 transition-colors ${currentStep >= 1 ? 'bg-emerald-600 text-white shadow-md' : 'bg-slate-200 text-slate-500'}`}>
               <ScanLine className="w-5 h-5" />
             </div>
             <span className="text-[10px] font-semibold uppercase tracking-wider hidden sm:block">Identidad</span>
           </div>
 
           
-          <div className={`flex flex-col items-center gap-2 ${currentStep >= 2 ? 'text-emerald-600' : 'text-slate-400'}`}>
+          <div className={`flex flex-col items-center gap-2 ${currentStep >= 2 ? 'text-emerald-700' : 'text-slate-400'}`}>
             <div className={`w-10 h-10 rounded-full flex items-center justify-center font-bold text-lg mb-1 transition-colors ${currentStep >= 2 ? 'bg-emerald-600 text-white shadow-md' : 'bg-slate-200 text-slate-500'}`}>
               <HeartPulse className="w-5 h-5" />
             </div>
             <span className="text-[10px] font-semibold uppercase tracking-wider hidden sm:block">Signos Vitales</span>
           </div>
 
-          <div className={`flex flex-col items-center gap-2 ${currentStep >= 3 ? 'text-emerald-600' : 'text-slate-400'}`}>
+          <div className={`flex flex-col items-center gap-2 ${currentStep >= 3 ? 'text-emerald-700' : 'text-slate-400'}`}>
             <div className={`w-10 h-10 rounded-full flex items-center justify-center font-bold text-lg mb-1 transition-colors ${currentStep >= 3 ? 'bg-emerald-600 text-white shadow-md' : 'bg-slate-200 text-slate-500'}`}>
               <MessageCircle className="w-5 h-5" />
             </div>
-            <span className="text-[10px] font-semibold uppercase tracking-wider hidden sm:block">Entrevista Única</span>
+            <span className="text-[10px] font-semibold uppercase tracking-wider hidden sm:block">Entrevista IA</span>
           </div>
 
           <div className={`flex flex-col items-center gap-2 ${currentStep >= 4 ? 'text-emerald-600' : 'text-slate-400'}`}>

@@ -92,14 +92,21 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onStartDemo }) => {
               initial={{ opacity: 0, x: 20 }}
               animate={{ opacity: 1, x: 0 }}
               transition={{ duration: 0.6, delay: 0.2 }}
-              className="flex items-center gap-4"
+              className="flex items-center gap-3"
             >
+              <button 
+                onClick={onStartDemo}
+                className="text-slate-300 hover:text-white font-semibold transition-colors flex items-center gap-2 px-4 py-2 rounded-xl hover:bg-slate-900 border border-transparent hover:border-slate-800 text-sm"
+              >
+                <UserCheck className="w-4 h-4 text-emerald-400" />
+                <span>Ingresar</span>
+              </button>
               <button 
                 onClick={onStartDemo}
                 className="group relative inline-flex items-center justify-center px-6 py-2.5 text-sm font-bold text-slate-950 transition-all duration-300 bg-gradient-to-r from-emerald-400 to-teal-400 rounded-full shadow-lg shadow-emerald-500/25 hover:shadow-emerald-500/40 hover:scale-105 active:scale-95"
               >
                 <Sparkles className="w-4 h-4 mr-2 animate-pulse" />
-                <span>Iniciar Totem Demo</span>
+                <span>Demo Directa</span>
                 <ArrowRight className="w-4 h-4 ml-2 group-hover:translate-x-1 transition-transform" />
               </button>
             </motion.div>

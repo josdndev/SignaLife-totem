@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { ScanLine, RotateCcw, AlertCircle, FileText, Camera, Activity, HeartPulse, Check, UserPlus, Wind, ActivitySquare, MessageCircle, Keyboard as KeyboardIcon, ArrowLeft, ExternalLink } from 'lucide-react';
+import { ScanLine, RotateCcw, AlertCircle, FileText, Camera, Activity, HeartPulse, Check, UserPlus, Wind, ActivitySquare, MessageCircle, Keyboard as KeyboardIcon, ArrowLeft, ExternalLink, LayoutDashboard, Stethoscope } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import { ResponsiveContainer, LineChart, Line, YAxis, Tooltip } from 'recharts';
 import { DataField } from './components/DataField';
@@ -8,11 +8,15 @@ import { RPPGCamera } from './components/RPPGCamera';
 import { SymptomInterview } from './components/SymptomInterview';
 import { EmergencyLetter } from './components/EmergencyLetter';
 import { LandingPage } from './components/LandingPage';
+import { Dashboard, RegisteredPatient } from './components/Dashboard';
 import type { IDData, VitalSigns } from './types';
 
 export default function App() {
   const [view, setView] = useState<'landing' | 'kiosk'>('landing');
+  const [activeTab, setActiveTab] = useState<'pretriage' | 'dashboard'>('pretriage');
+  const [registeredPatients, setRegisteredPatients] = useState<RegisteredPatient[]>([]);
   const [currentStep, setCurrentStep] = useState<1 | 2 | 3 | 4>(1);
+
 
 
   // Stage 1: ID
@@ -126,18 +130,50 @@ export default function App() {
           <ArrowLeft className="w-4 h-4 text-emerald-400" />
           <span>Volver a la Presentación</span>
         </button>
-        <div className="flex items-center gap-2">
+
+        {/* Tab Selection */}
+        <div className="flex items-center gap-2 bg-slate-950 p-1 rounded-xl border border-slate-800">
+          <button
+            onClick={() => setActiveTab('pretriage')}
+            className={`flex items-center gap-2 px-4 py-1.5 rounded-lg text-xs font-bold transition ${
+              activeTab === 'pretriage'
+                ? 'bg-emerald-500 text-slate-950 shadow-md'
+                : 'text-slate-400 hover:text-white'
+            }`}
+          >
+            <Stethoscope className="w-4 h-4" />
+            <span>Pre-Triage</span>
+          </button>
+
+          <button
+            onClick={() => setActiveTab('dashboard')}
+            className={`flex items-center gap-2 px-4 py-1.5 rounded-lg text-xs font-bold transition ${
+              activeTab === 'dashboard'
+                ? 'bg-emerald-500 text-slate-950 shadow-md'
+                : 'text-slate-400 hover:text-white'
+            }`}
+          >
+            <LayoutDashboard className="w-4 h-4" />
+            <span>Dashboard Pacientes</span>
+          </button>
+        </div>
+
+        <div className="flex items-center gap-2 hidden sm:flex">
           <span className="w-2 h-2 rounded-full bg-emerald-400 animate-ping"></span>
-          <span className="text-[11px] font-semibold text-emerald-400 uppercase tracking-widest">Totem Demo Activo</span>
+          <span className="text-[11px] font-semibold text-emerald-400 uppercase tracking-widest">En Línea</span>
         </div>
       </div>
 
-      {/* Header & Stepper */}
-      <div className="w-full max-w-3xl mb-8 mt-2 flex flex-col items-center">
-        <img src="/logo.png" alt="Logo Pre-Triage" className="h-16 w-auto mb-4 object-contain drop-shadow-md brightness-110" />
-        <h1 className="text-3xl font-bold tracking-tight text-white mb-6 text-center font-poppins">
-          Estación Pre-Triage Autónoma
-        </h1>
+      {activeTab === 'dashboard' ? (
+        <Dashboard registeredPatients={registeredPatients} />
+      ) : (
+        <>
+          {/* Header & Stepper */}
+          <div className="w-full max-w-3xl mb-8 mt-2 flex flex-col items-center">
+            <img src="/logo.png" alt="Logo Pre-Triage" className="h-16 w-auto mb-4 object-contain drop-shadow-md brightness-110" />
+            <h1 className="text-3xl font-bold tracking-tight text-white mb-6 text-center font-poppins">
+              Estación Pre-Triage Autónoma
+            </h1>
         <div className="flex items-center justify-between relative px-2 w-full">
           <div className="absolute left-0 top-1/2 -translate-y-1/2 w-full h-1 bg-slate-800 -z-10 rounded-full"></div>
           <div className="absolute left-0 top-1/2 -translate-y-1/2 h-1 bg-emerald-500 -z-10 rounded-full transition-all duration-500" 
@@ -558,8 +594,10 @@ export default function App() {
              </div>
           )}
 
-        </AnimatePresence>
+         </AnimatePresence>
       </motion.div>
-    </div>
+    </>
+  )}
+</div>
   );
 }

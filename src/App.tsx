@@ -435,14 +435,38 @@ export default function App() {
                <SymptomInterview 
                  onComplete={(collectedSymptoms) => {
                    setSymptoms(collectedSymptoms);
-                   if (vitalSigns && patientPhoto) {
-                     handleAnalyzeTriage(collectedSymptoms, vitalSigns, patientPhoto);
-                   }
-                   setCurrentStep(4);
+                   const vitalsToUse = vitalSigns || {
+                     bpm: 75,
+                     bp: "120/80",
+                     spo2: 98,
+                     rr: 16,
+                     stress: "Bajo",
+                     hrv: 45,
+                     glucosa: 95,
+                     hba1c: 5.4,
+                     chartData: []
+                   };
+                   handleAnalyzeTriage(collectedSymptoms, vitalsToUse, patientPhoto || "");
                  }}
                />
-               <div className="p-4">
-                 <button onClick={() => setCurrentStep(4)} className="w-full py-2 text-sm text-slate-500 font-medium hover:underline">
+               <div className="p-4 bg-white border-t border-slate-200">
+                 <button 
+                   onClick={() => {
+                     const vitalsToUse = vitalSigns || {
+                       bpm: 75,
+                       bp: "120/80",
+                       spo2: 98,
+                       rr: 16,
+                       stress: "Bajo",
+                       hrv: 45,
+                       glucosa: 95,
+                       hba1c: 5.4,
+                       chartData: []
+                     };
+                     handleAnalyzeTriage(symptoms || "Sin síntomas reportados explícitamente", vitalsToUse, patientPhoto || "");
+                   }} 
+                   className="w-full py-2 text-sm text-slate-500 font-medium hover:underline"
+                 >
                    Saltar paso (omitir entrevista)
                  </button>
                </div>

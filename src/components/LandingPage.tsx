@@ -20,7 +20,9 @@ import {
   Layers,
   Zap,
   Award,
-  HeartPulse
+  HeartPulse,
+  Sun,
+  Moon
 } from 'lucide-react';
 import { motion, useScroll, useTransform, useSpring } from 'framer-motion';
 
@@ -29,6 +31,8 @@ interface LandingPageProps {
 }
 
 export const LandingPage: React.FC<LandingPageProps> = ({ onStartDemo }) => {
+  const [darkMode, setDarkMode] = useState(true);
+
   const { scrollYProgress } = useScroll();
   const scaleX = useSpring(scrollYProgress, {
     stiffness: 100,
@@ -41,7 +45,9 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onStartDemo }) => {
   const opacityHero = useTransform(scrollYProgress, [0, 0.25], [1, 0.2]);
 
   return (
-    <div className="min-h-screen bg-slate-950 text-slate-100 font-sans selection:bg-emerald-500 selection:text-white relative overflow-x-hidden">
+    <div className={`min-h-screen font-sans selection:bg-emerald-500 selection:text-white relative overflow-x-hidden transition-colors duration-500 ${
+      darkMode ? 'bg-slate-950 text-slate-100' : 'bg-slate-50 text-slate-900'
+    }`}>
       
       {/* Scroll Progress Bar */}
       <motion.div
@@ -50,7 +56,11 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onStartDemo }) => {
       />
 
       {/* Navigation */}
-      <nav className="fixed w-full z-40 bg-slate-950/80 backdrop-blur-xl border-b border-emerald-500/10 shadow-2xl transition-all">
+      <nav className={`fixed w-full z-40 backdrop-blur-xl border-b transition-all duration-300 ${
+        darkMode 
+          ? 'bg-slate-950/85 border-emerald-500/10 shadow-2xl' 
+          : 'bg-white/85 border-emerald-500/20 shadow-md text-slate-900'
+      }`}>
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex justify-between h-20 items-center">
             <motion.div 
@@ -87,18 +97,35 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onStartDemo }) => {
               <a href="#contacto" className="hover:text-emerald-400 transition-colors">Contacto</a>
             </motion.div>
 
-            {/* Action CTA */}
+            {/* Action CTA & Theme Toggle */}
             <motion.div 
               initial={{ opacity: 0, x: 20 }}
               animate={{ opacity: 1, x: 0 }}
               transition={{ duration: 0.6, delay: 0.2 }}
               className="flex items-center gap-3"
             >
+              {/* Theme Switcher Button */}
+              <button
+                onClick={() => setDarkMode(!darkMode)}
+                className={`p-2 rounded-xl border transition-all ${
+                  darkMode 
+                    ? 'bg-slate-900 border-slate-800 text-amber-400 hover:bg-slate-800' 
+                    : 'bg-emerald-50 border-emerald-200 text-slate-700 hover:bg-emerald-100'
+                }`}
+                title={darkMode ? 'Cambiar a Modo Claro' : 'Cambiar a Modo Oscuro'}
+              >
+                {darkMode ? <Sun className="w-4 h-4" /> : <Moon className="w-4 h-4" />}
+              </button>
+
               <button 
                 onClick={onStartDemo}
-                className="text-slate-300 hover:text-white font-semibold transition-colors flex items-center gap-2 px-4 py-2 rounded-xl hover:bg-slate-900 border border-transparent hover:border-slate-800 text-sm"
+                className={`font-semibold transition-colors flex items-center gap-2 px-4 py-2 rounded-xl text-sm ${
+                  darkMode 
+                    ? 'text-slate-300 hover:text-white hover:bg-slate-900 border border-transparent hover:border-slate-800' 
+                    : 'text-slate-700 hover:text-slate-900 hover:bg-slate-100 border border-transparent hover:border-slate-200'
+                }`}
               >
-                <UserCheck className="w-4 h-4 text-emerald-400" />
+                <UserCheck className="w-4 h-4 text-emerald-500" />
                 <span>Ingresar</span>
               </button>
               <button 

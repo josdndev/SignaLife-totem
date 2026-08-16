@@ -537,32 +537,24 @@ export function RPPGCamera({ onComplete, onCancel }: RPPGCameraProps) {
 
             <div className="grid grid-cols-1 gap-3 mb-6 text-left max-h-96 overflow-y-auto pr-2">
               {[
-                { id: 'bpm', label: 'Ritmo Cardíaco', value: `${vitals.bpm} BPM`, fidelity: 95.0, tolerance: 'Base Line', icon: Heart, colorClass: 'text-rose-600', bgClass: 'bg-rose-50 border-rose-200' },
-                { id: 'spo2', label: 'SpO2', value: `${vitals.spo2}%`, fidelity: 93.4, tolerance: 'Inferencia indirecta', icon: Activity, colorClass: 'text-sky-600', bgClass: 'bg-sky-50 border-sky-200' },
-                { id: 'rr', label: 'F. Respiratoria', value: `${vitals.rr} RPM`, fidelity: 84.0, tolerance: 'Movimiento y distancia', icon: Wind, colorClass: 'text-blue-600', bgClass: 'bg-blue-50 border-blue-200' },
-                { id: 'bp', label: 'P. Arterial (PAS)', value: `${vitals.bp} mmHg`, fidelity: 83.8, tolerance: 'Rangos extremos', icon: Activity, colorClass: 'text-teal-600', bgClass: 'bg-teal-50 border-teal-200' },
-                { id: 'glucosa', label: 'Glucosa', value: `${vitals.glucosa} mg/dL`, fidelity: 82.6, tolerance: 'Límite de absorbancia', icon: ActivitySquare, colorClass: 'text-indigo-600', bgClass: 'bg-indigo-50 border-indigo-200' },
-                { id: 'hba1c', label: 'HbA1c', value: `${vitals.hba1c}%`, fidelity: 73.3, tolerance: 'Limitaciones del SDK', icon: ActivitySquare, colorClass: 'text-fuchsia-600', bgClass: 'bg-fuchsia-50 border-fuchsia-200' },
-                { id: 'stress', label: 'Nivel de Estrés', value: vitals.stress, fidelity: 63.9, tolerance: 'Algoritmos simples', icon: Activity, colorClass: 'text-amber-600', bgClass: 'bg-amber-50 border-amber-200' },
-                { id: 'antisuplantacion', label: 'Antisuplantación', value: 'N/A', fidelity: 48.5, tolerance: 'Baja tasa de cuadros', icon: Activity, colorClass: 'text-slate-600', bgClass: 'bg-slate-50 border-slate-200' },
-                { id: 'anemia', label: 'Anemia (Hb)', value: 'N/A', fidelity: 23.8, tolerance: 'Población de embarazadas', icon: Activity, colorClass: 'text-slate-600', bgClass: 'bg-slate-50 border-slate-200' }
+                { id: 'bpm', label: 'Ritmo Cardíaco (Pulso)', value: `${vitals.bpm} BPM`, fidelity: 95.0, tolerance: 'Frecuencia de pulso óptico', icon: Heart, colorClass: 'text-rose-600', bgClass: 'bg-rose-50 border-rose-200' },
+                { id: 'hrv', label: 'Variación de Pulso (HRV)', value: `${vitals.hrv} ms`, fidelity: 91.2, tolerance: 'Intervalos entre latidos (RR)', icon: ActivitySquare, colorClass: 'text-purple-600', bgClass: 'bg-purple-50 border-purple-200' },
+                { id: 'rr', label: 'Frecuencia Respiratoria', value: `${vitals.rr} RPM`, fidelity: 88.4, tolerance: 'Micro-movimiento torácico/facial', icon: Wind, colorClass: 'text-blue-600', bgClass: 'bg-blue-50 border-blue-200' },
               ]
-              .filter(ind => ind.fidelity > 70)
-              .sort((a, b) => b.fidelity - a.fidelity)
               .map(ind => {
                 const Icon = ind.icon;
                 return (
-                  <div key={ind.id} className={`flex items-center justify-between p-3 rounded-xl border ${ind.bgClass}`}>
+                  <div key={ind.id} className={`flex items-center justify-between p-3.5 rounded-xl border ${ind.bgClass}`}>
                     <div className="flex items-center gap-3">
                       <Icon className={`w-6 h-6 ${ind.colorClass}`} />
                       <div>
                         <p className="text-xs font-bold text-slate-500 uppercase">{ind.label}</p>
-                        <p className={`text-lg font-extrabold ${ind.colorClass}`}>{ind.value}</p>
+                        <p className={`text-xl font-extrabold ${ind.colorClass}`}>{ind.value}</p>
                       </div>
                     </div>
                     <div className="text-right">
                       <p className="text-xs font-bold text-slate-700 bg-white px-2 py-1 rounded-md border border-slate-200 shadow-sm">{ind.fidelity}% Precisión</p>
-                      <p className="text-[9px] text-slate-500 mt-1 font-mono uppercase max-w-[100px] truncate" title={ind.tolerance}>{ind.tolerance}</p>
+                      <p className="text-[9px] text-slate-500 mt-1 font-mono uppercase max-w-[110px] truncate" title={ind.tolerance}>{ind.tolerance}</p>
                     </div>
                   </div>
                 );

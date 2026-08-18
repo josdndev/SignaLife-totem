@@ -346,14 +346,13 @@ export function SymptomInterview({ onComplete }: SymptomInterviewProps) {
                     >
                       Cancelar
                     </button>
-                    {isLocked && (
-                      <button
-                        onClick={() => stopVoiceRecording(true)}
-                        className="w-9 h-9 bg-emerald-600 hover:bg-emerald-700 text-white rounded-full flex items-center justify-center shadow-md transition"
-                      >
-                        <Send className="w-4 h-4" />
-                      </button>
-                    )}
+                    <button
+                      onClick={() => stopVoiceRecording(true)}
+                      className="w-10 h-10 bg-emerald-600 hover:bg-emerald-700 text-white rounded-full flex items-center justify-center shadow-md transition shrink-0 font-bold"
+                      title="Enviar nota de voz"
+                    >
+                      <Send className="w-5 h-5" />
+                    </button>
                   </div>
                 </div>
               ) : (

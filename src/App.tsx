@@ -172,6 +172,10 @@ export default function App() {
         idData={extractedData} 
         vitals={vitalSigns}
         symptoms={symptoms}
+        idImage={selectedImage}
+        insurerName={selectedInsurer}
+        phone={patientPhone}
+        email={patientEmail}
         onFinish={() => setIsLetterOpen(false)} 
       />
     );

@@ -1,29 +1,92 @@
-import React, { useState } from 'react';
-import { FileText, Printer, ArrowLeft, Download, ShieldCheck } from 'lucide-react';
+import React, { useState, useRef } from 'react';
+import { FileText, Printer, ArrowLeft, Download, ShieldCheck, Eraser, Check } from 'lucide-react';
 import type { IDData, VitalSigns } from '../types';
 
 interface EmergencyLetterProps {
   idData: IDData | null;
   vitals?: VitalSigns | null;
   symptoms?: string;
+  idImage?: string | null;
+  insurerName?: string;
+  phone?: string;
+  email?: string;
   onFinish: () => void;
 }
 
-export function EmergencyLetter({ idData, vitals, symptoms, onFinish }: EmergencyLetterProps) {
+export function EmergencyLetter({ idData, vitals, symptoms, idImage, insurerName, phone, email, onFinish }: EmergencyLetterProps) {
   const [formData, setFormData] = useState({
     city: "Caracas",
     date: new Date().toLocaleDateString('es-VE', { day: '2-digit', month: 'long', year: 'numeric' }),
     time: new Date().toLocaleTimeString('es-VE', { hour: '2-digit', minute: '2-digit' }),
-    insurerName: "Seguro Prueba C.A.",
-    policyNumber: "POL-994820-2026",
-    fullName: idData ? `${idData.names} ${idData.surnames}` : "JOSE D. NARANJO M.",
-    idNumber: idData ? idData.idNumber : "V-31901967",
-    eventLocation: "Caracas, Venezuela (Residencia habitual / Vía pública)",
-    eventRelato: symptoms || "Sintomatología aguda de inicio repentino caracterizada por dolor de estómago fuerte, náuseas y malestar generalizado que requirió atención urgente en pre-triaje.",
-    representativeName: idData ? `${idData.names} ${idData.surnames}` : "JOSE D. NARANJO M.",
-    phone: "+58 412 000 0000",
-    email: "paciente@ejemplo.com"
+    insurerName: insurerName || "Seguros Caracas",
+    policyNumber: insurerName === "Seguros Mercantil" ? "MER-401923" : "CAR-884920",
+    fullName: idData ? `${idData.names} ${idData.surnames}` : "CARLOS ENRIQUE MENDOZA ROJAS",
+    idNumber: idData ? idData.idNumber : "V-22.222.222",
+    eventLocation: "Caracas, Venezuela (Residencia habitual / Calle Las Ceibas, Petare)",
+    eventRelato: symptoms || "Sintomatología aguda por caída en escaleras golpeándose la muñeca y la cabeza.",
+    representativeName: idData ? `${idData.names} ${idData.surnames}` : "CARLOS ENRIQUE MENDOZA ROJAS",
+    phone: phone || "+58 414 789 0123",
+    email: email || "carlos.mendoza@email.com"
   });
+
+  // Canvas Signature state
+  const canvasRef = useRef<HTMLCanvasElement | null>(null);
+  const [isDrawing, setIsDrawing] = useState(false);
+  const [hasSigned, setHasSigned] = useState(false);
+
+  const getCoordinates = (e: React.MouseEvent<HTMLCanvasElement> | React.TouchEvent<HTMLCanvasElement>) => {
+    if (!canvasRef.current) return { x: 0, y: 0 };
+    const rect = canvasRef.current.getBoundingClientRect();
+    if ('touches' in e) {
+      return {
+        x: e.touches[0].clientX - rect.left,
+        y: e.touches[0].clientY - rect.top
+      };
+    }
+    return {
+      x: e.clientX - rect.left,
+      y: e.clientY - rect.top
+    };
+  };
+
+  const startDrawing = (e: React.MouseEvent<HTMLCanvasElement> | React.TouchEvent<HTMLCanvasElement>) => {
+    setIsDrawing(true);
+    const { x, y } = getCoordinates(e);
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    const ctx = canvas.getContext('2d');
+    if (ctx) {
+      ctx.beginPath();
+      ctx.moveTo(x, y);
+    }
+  };
+
+  const draw = (e: React.MouseEvent<HTMLCanvasElement> | React.TouchEvent<HTMLCanvasElement>) => {
+    if (!isDrawing || !canvasRef.current) return;
+    const { x, y } = getCoordinates(e);
+    const ctx = canvasRef.current.getContext('2d');
+    if (ctx) {
+      ctx.lineTo(x, y);
+      ctx.strokeStyle = '#0f172a';
+      ctx.lineWidth = 2.5;
+      ctx.lineCap = 'round';
+      ctx.stroke();
+      setHasSigned(true);
+    }
+  };
+
+  const stopDrawing = () => {
+    setIsDrawing(false);
+  };
+
+  const clearSignature = () => {
+    if (!canvasRef.current) return;
+    const ctx = canvasRef.current.getContext('2d');
+    if (ctx) {
+      ctx.clearRect(0, 0, canvasRef.current.width, canvasRef.current.height);
+      setHasSigned(false);
+    }
+  };
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement>) => {
     setFormData({ ...formData, [e.target.name]: e.target.value });
@@ -104,6 +167,8 @@ export function EmergencyLetter({ idData, vitals, symptoms, onFinish }: Emergenc
               <div><span className="text-slate-500">Documento ID:</span> <span className="font-bold">{formData.idNumber}</span></div>
               <div><span className="text-slate-500">Nº Póliza:</span> <span className="font-bold">{formData.policyNumber}</span></div>
               <div><span className="text-slate-500">Compañía:</span> <span className="font-bold">{formData.insurerName}</span></div>
+              <div><span className="text-slate-500">Teléfono:</span> <span className="font-bold">{formData.phone}</span></div>
+              <div><span className="text-slate-500">Correo:</span> <span className="font-bold">{formData.email}</span></div>
             </div>
           </div>
 
@@ -128,7 +193,7 @@ export function EmergencyLetter({ idData, vitals, symptoms, onFinish }: Emergenc
           {/* Signos vitales resumidos para soporte de seguro */}
           {vitals && (
             <div className="bg-emerald-50/70 p-4 rounded-xl border border-emerald-200 space-y-1 font-mono text-xs">
-              <div className="font-bold text-emerald-900 uppercase text-[11px] mb-1 tracking-wider">Anexo: Constancia de Registro Biométrico (SignaLife Pre-Triage):</div>
+              <div className="font-bold text-emerald-900 uppercase text-[11px] mb-1 tracking-wider">Anexo A: Constancia de Registro Biométrico (SignaLife Pre-Triage):</div>
               <div className="grid grid-cols-3 gap-2 text-emerald-800">
                 <div><span>Frecuencia Cardíaca:</span> <span className="font-bold">{vitals.bpm} BPM</span></div>
                 <div><span>SpO2:</span> <span className="font-bold">{vitals.spo2}%</span></div>
@@ -137,25 +202,81 @@ export function EmergencyLetter({ idData, vitals, symptoms, onFinish }: Emergenc
             </div>
           )}
 
+          {/* Anexo B: Foto de la Cédula de Identidad */}
+          <div className="bg-slate-50 p-4 rounded-xl border border-slate-200 space-y-2">
+            <div className="font-bold text-slate-900 uppercase text-xs tracking-wider font-mono">
+              Anexo B: Copia Escaneada del Documento de Identidad (Cédula):
+            </div>
+            {idImage ? (
+              <div className="flex justify-center bg-white p-2 border border-slate-300 rounded-lg max-h-48 overflow-hidden">
+                <img src={idImage} alt="Cédula de Identidad" className="max-h-44 object-contain rounded" />
+              </div>
+            ) : (
+              <div className="p-4 bg-white border border-slate-200 rounded-lg text-xs font-mono text-slate-500 text-center">
+                [ Cédula de Identidad N° {formData.idNumber} - Escaneo Biométrico Verificado en Sistema ]
+              </div>
+            )}
+          </div>
+
           <p className="text-xs text-slate-600">
-            Declaro bajo fe de juramento que la información aquí contenida es fiel a la realidad y refleja con exactitud la ocurrencia de los hechos. Solicito formalmente la procedencia y cobertura de los gastos médicos derivados conforme a las condiciones de la póliza contratada.
+            Declaro bajo fe de juramento y consentimiento informado que la información aquí contenida es fiel a la realidad y refleja con exactitud la ocurrencia de los hechos. Solicito formalmente la procedencia y cobertura de los gastos médicos derivados conforme a las condiciones de la póliza contratada.
           </p>
 
         </div>
 
-        {/* Firmas y Fecha */}
-        <div className="mt-16 pt-8 border-t border-slate-300 grid grid-cols-2 gap-8 font-sans">
-          <div>
-            <p className="font-bold text-slate-900 text-xs uppercase tracking-wider">Firma del Paciente / Declarante:</p>
-            <div className="h-16 border-b border-dashed border-slate-400"></div>
+        {/* Firma Digital con Panel táctil/ratón */}
+        <div className="mt-12 pt-6 border-t border-slate-300 grid grid-cols-1 md:grid-cols-2 gap-8 font-sans">
+          <div className="space-y-2">
+            <div className="flex items-center justify-between">
+              <p className="font-bold text-slate-900 text-xs uppercase tracking-wider">
+                Firma Digital (Consentimiento Informado):
+              </p>
+              <button 
+                type="button" 
+                onClick={clearSignature}
+                className="text-[10px] text-slate-500 hover:text-red-600 font-semibold flex items-center gap-1 print:hidden"
+              >
+                <Eraser className="w-3 h-3" /> Limpiar Firma
+              </button>
+            </div>
+
+            {/* Panel de Firma táctil / mouse */}
+            <div className="relative border-2 border-slate-300 border-dashed rounded-xl bg-slate-50 h-32 flex justify-center items-center overflow-hidden">
+              <canvas
+                ref={canvasRef}
+                width={350}
+                height={120}
+                onMouseDown={startDrawing}
+                onMouseMove={draw}
+                onMouseUp={stopDrawing}
+                onMouseLeave={stopDrawing}
+                onTouchStart={startDrawing}
+                onTouchMove={draw}
+                onTouchEnd={stopDrawing}
+                className="touch-none cursor-crosshair w-full h-full"
+              />
+              {!hasSigned && (
+                <div className="absolute inset-0 pointer-events-none flex items-center justify-center text-xs text-slate-400 font-mono italic">
+                  Firme aquí usando la pantalla táctil o el ratón...
+                </div>
+              )}
+            </div>
+
             <p className="font-bold text-slate-900 mt-2 text-sm">{formData.fullName}</p>
-            <p className="text-xs text-slate-600">C.I / ID: {formData.idNumber}</p>
+            <p className="text-xs text-slate-600 font-mono">C.I / ID: {formData.idNumber}</p>
           </div>
 
-          <div className="text-right">
-            <p className="font-bold text-slate-900 text-xs uppercase tracking-wider">Recepción del Seguro / Centro Médico:</p>
-            <div className="h-16 border-b border-dashed border-slate-400"></div>
-            <p className="text-xs text-slate-500 font-mono mt-2">{formData.insurerName} - Sello y Firma</p>
+          <div className="text-right flex flex-col justify-between">
+            <div>
+              <p className="font-bold text-slate-900 text-xs uppercase tracking-wider">Recepción del Seguro / Centro Médico:</p>
+              <div className="h-28 border-b border-dashed border-slate-400 flex items-center justify-end">
+                <div className="border-2 border-emerald-600 text-emerald-800 rounded-lg p-2 text-[10px] font-mono font-bold text-center rotate-[-3deg] bg-emerald-50/50">
+                  <Check className="w-4 h-4 mx-auto text-emerald-600" />
+                  RECIBIDO Y VERIFICADO<br/>TOTEM PRE-TRIAGE ADMISIONES
+                </div>
+              </div>
+            </div>
+            <p className="text-xs text-slate-500 font-mono mt-2">{formData.insurerName} - Sello y Firma Digital</p>
           </div>
         </div>
 

@@ -428,7 +428,7 @@ Califica la calidad de 1 a 10. Si la calidad es mayor a 8, no necesitas llenar '
         2. Haz siempre UNA pregunta a la vez (por ejemplo, no pidas la ciudad y la fecha al mismo tiempo).
         3. Mantén un tono profesional, compasivo y directo.
         4. El tipo de seguro es SIEMPRE "Salud". No lo preguntes.
-        5. La primera pregunta de la conversación debe ser: "Hola, soy el asistente clínico de admisiones. ¿Cuál es el motivo de tu consulta hoy?".
+        5. La primera pregunta de la conversación debe ser: "Hola, soy el asistente clínico de admisiones. Para tener el mayor contexto posible, por favor cuéntame: ¿Qué te sucedió (o cuál es tu síntoma), cómo ocurrió, cuándo comenzó y en dónde estabas o dónde te ocurrió?".
         6. Revisa estrictamente el historial. Una vez que tengas una idea clara de la emergencia médica Y hayas recopilado los 7 datos del seguro, tu ÚNICA respuesta debe ser la palabra exacta: "INTERVIEW_COMPLETE". No agregues nada más en esa respuesta final.
       `;
 

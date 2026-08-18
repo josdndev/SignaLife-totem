@@ -21,6 +21,8 @@ export default function App() {
 
   // Stage 1: ID & Insurance Verification
   const [isManualEntry, setIsManualEntry] = useState(false);
+  const [manualCedulaInput, setManualCedulaInput] = useState<string>("");
+  const [isSearchingCedula, setIsSearchingCedula] = useState(false);
   const [isCameraActive, setIsCameraActive] = useState(false);
   const [selectedImage, setSelectedImage] = useState<string | null>(null);
   const [isProcessing, setIsProcessing] = useState(false);
@@ -31,6 +33,26 @@ export default function App() {
   const [patientAddress, setPatientAddress] = useState<string>("");
   const [incidentType, setIncidentType] = useState<"Clinico" | "Traumatico">("Clinico");
   const [error, setError] = useState<string | null>(null);
+
+  const handleLookupCedula = () => {
+    if (!manualCedulaInput.trim()) return;
+    setIsSearchingCedula(true);
+    setTimeout(() => {
+      setExtractedData({
+        names: 'CARLOS ENRIQUE',
+        surnames: 'MENDOZA ROJAS',
+        idNumber: manualCedulaInput.toUpperCase().startsWith('V') ? manualCedulaInput.toUpperCase() : `V-${manualCedulaInput}`,
+        dateOfBirth: '14/08/1985',
+        maritalStatus: 'SOLTERO',
+        issueDate: '10/05/2015',
+        expiryDate: '10/05/2025'
+      });
+      setPatientPhone('+58 414 789 0123');
+      setPatientEmail('carlos.mendoza@email.com');
+      setPatientAddress('Av. Francisco de Miranda, Edif. Galipán, Piso 4, Chacao, Caracas');
+      setIsSearchingCedula(false);
+    }, 800);
+  };
 
   // Stage 2: rPPG Vitals
   const [isRPPGActive, setIsRPPGActive] = useState(false);
@@ -275,7 +297,8 @@ export default function App() {
                         <button 
                           onClick={() => {
                             setIsManualEntry(true);
-                            setExtractedData({ names: '', surnames: '', idNumber: '', dateOfBirth: '', maritalStatus: '', issueDate: '', expiryDate: '' });
+                            setManualCedulaInput('');
+                            setExtractedData(null);
                           }}
                           className="flex flex-col items-center justify-center w-40 h-40 rounded-2xl bg-white border-2 border-blue-100 shadow-md shadow-blue-50 hover:border-blue-500 hover:shadow-lg transition-all group cursor-pointer text-center p-4"
                         >
@@ -295,7 +318,55 @@ export default function App() {
                     </motion.div>
                   )}
 
-                  {(selectedImage || isManualEntry) && !isCameraActive && (
+                  {isManualEntry && !extractedData && (
+                    <motion.div key="manual-entry-input" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="flex flex-col gap-5 p-6 bg-slate-50 border border-slate-200 rounded-xl">
+                      <div className="flex items-center gap-3 border-b border-slate-200 pb-3">
+                        <KeyboardIcon className="w-6 h-6 text-blue-600" />
+                        <div>
+                          <h3 className="font-bold text-slate-800 text-lg">Consulta por Cédula</h3>
+                          <p className="text-xs text-slate-500">Introduce únicamente la Cédula de Identidad para simular la búsqueda en la Base de Datos del Seguro.</p>
+                        </div>
+                      </div>
+
+                      <div className="space-y-2">
+                        <label className="text-xs font-bold text-slate-700 uppercase tracking-wider block">Número de Cédula de Identidad</label>
+                        <div className="flex gap-2">
+                          <input 
+                            type="text"
+                            value={manualCedulaInput}
+                            onChange={e => setManualCedulaInput(e.target.value)}
+                            onKeyDown={e => e.key === 'Enter' && handleLookupCedula()}
+                            placeholder="Ej. V-22.222.222"
+                            className="flex-1 bg-white border border-slate-300 rounded-xl px-4 py-3 text-base font-mono font-bold text-slate-800 focus:ring-2 focus:ring-blue-500 focus:border-transparent outline-none shadow-sm"
+                            autoFocus
+                          />
+                          <button
+                            onClick={handleLookupCedula}
+                            disabled={!manualCedulaInput.trim() || isSearchingCedula}
+                            className="px-6 py-3 bg-blue-600 hover:bg-blue-700 text-white font-bold rounded-xl transition shadow-md flex items-center gap-2 disabled:opacity-50"
+                          >
+                            {isSearchingCedula ? (
+                              <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                            ) : (
+                              <>
+                                <span>Buscar</span>
+                                <ScanLine className="w-4 h-4" />
+                              </>
+                            )}
+                          </button>
+                        </div>
+                      </div>
+
+                      <button 
+                        onClick={() => setIsManualEntry(false)}
+                        className="text-xs font-semibold text-slate-500 hover:text-slate-800 underline self-center mt-2"
+                      >
+                        Cancelar y volver a opciones
+                      </button>
+                    </motion.div>
+                  )}
+
+                  {(selectedImage || (isManualEntry && extractedData)) && !isCameraActive && (
                     <motion.div key="processing-view" initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }} className="flex flex-col gap-6">
                       {!isManualEntry && selectedImage && (
                         <div className="relative rounded-xl overflow-hidden shadow-inner border border-slate-200 bg-slate-100 flex justify-center items-center min-h-[220px]">
@@ -328,33 +399,10 @@ export default function App() {
 
                           {/* Datos personales extraídos */}
                           <div className="grid grid-cols-2 gap-x-4 gap-y-2 bg-white/70 p-3 rounded-lg border border-emerald-100">
-                            {isManualEntry ? (
-                              <>
-                                <div>
-                                  <span className="text-[10px] text-emerald-700 font-bold block uppercase tracking-wider">Nombres</span>
-                                  <input type="text" className="w-full text-sm font-semibold text-slate-800 bg-transparent border-b border-emerald-200 outline-none" placeholder="EJ. JUAN" value={extractedData.names} onChange={e => setExtractedData({...extractedData, names: e.target.value})} />
-                                </div>
-                                <div>
-                                  <span className="text-[10px] text-emerald-700 font-bold block uppercase tracking-wider">Apellidos</span>
-                                  <input type="text" className="w-full text-sm font-semibold text-slate-800 bg-transparent border-b border-emerald-200 outline-none" placeholder="EJ. PÉREZ" value={extractedData.surnames} onChange={e => setExtractedData({...extractedData, surnames: e.target.value})} />
-                                </div>
-                                <div>
-                                  <span className="text-[10px] text-emerald-700 font-bold block uppercase tracking-wider">Cédula</span>
-                                  <input type="text" className="w-full text-sm font-semibold text-slate-800 bg-transparent border-b border-emerald-200 outline-none" placeholder="EJ. V 12.345.678" value={extractedData.idNumber} onChange={e => setExtractedData({...extractedData, idNumber: e.target.value})} />
-                                </div>
-                                <div>
-                                  <span className="text-[10px] text-emerald-700 font-bold block uppercase tracking-wider">Fecha Nac.</span>
-                                  <input type="text" className="w-full text-sm font-semibold text-slate-800 bg-transparent border-b border-emerald-200 outline-none" placeholder="EJ. 01/01/1990" value={extractedData.dateOfBirth} onChange={e => setExtractedData({...extractedData, dateOfBirth: e.target.value})} />
-                                </div>
-                              </>
-                            ) : (
-                              <>
-                                <DataField label="Nombres" value={extractedData.names} />
-                                <DataField label="Apellidos" value={extractedData.surnames} />
-                                <DataField label="Cédula" value={extractedData.idNumber} />
-                                <DataField label="Fecha Nac." value={extractedData.dateOfBirth} />
-                              </>
-                            )}
+                            <DataField label="Nombres" value={extractedData.names} />
+                            <DataField label="Apellidos" value={extractedData.surnames} />
+                            <DataField label="Cédula" value={extractedData.idNumber} />
+                            <DataField label="Fecha Nac." value={extractedData.dateOfBirth} />
                           </div>
 
                           {/* Escaneo automático de Pólizas por Cédula y Nombre */}

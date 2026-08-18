@@ -164,8 +164,16 @@ export function SymptomInterview({ onComplete }: SymptomInterviewProps) {
           return;
         }
 
+        setIsRecording(false);
+        setIsLocked(false);
+        setRecordingSeconds(0);
+
+        // 1. Mostrar de inmediato que el audio se envió
+        const tempAudioMsg: ChatMessage = { role: 'user', content: '🎤 Nota de voz enviada (procesando transcripción...)' };
+        setMessages(prev => [...prev, tempAudioMsg]);
         setIsLoading(true);
         setMicError(null);
+
         try {
           const audioBlob = new Blob(audioChunksRef.current, { type: 'audio/webm' });
           const reader = new FileReader();
@@ -182,20 +190,24 @@ export function SymptomInterview({ onComplete }: SymptomInterviewProps) {
             const data = await res.json();
             if (data.text) {
               const transcribedText = data.text.trim();
-              // Enviar el mensaje transcrito directamente
-              const userMessage: ChatMessage = { role: 'user', content: transcribedText };
-              setMessages(prev => [...prev, userMessage]);
-              requestDoctorResponse([...messages, userMessage]);
+              const finalUserMsg: ChatMessage = { role: 'user', content: transcribedText };
+              
+              // 2. Reemplazar la nota provisional con el texto transcrito real y enviar al bot
+              setMessages(prev => {
+                const updated = [...prev];
+                updated[updated.length - 1] = finalUserMsg;
+                return updated;
+              });
+
+              requestDoctorResponse([...messages, finalUserMsg]);
+            } else {
+              setIsLoading(false);
             }
           };
         } catch (e: any) {
           console.error("Error transcribiendo audio:", e);
           setMicError("transcribe-error");
-        } finally {
           setIsLoading(false);
-          setIsRecording(false);
-          setIsLocked(false);
-          setRecordingSeconds(0);
         }
       };
 

@@ -117,8 +117,8 @@ export function EmergencyLetter({ idData, vitals, symptoms, idImage, insurerName
         </div>
       </div>
 
-      {/* Formato Oficial de Carta de Exposición de Motivos / Relato de Hechos */}
-      <div className="w-full max-w-4xl bg-white p-8 md:p-14 rounded-2xl shadow-xl border border-slate-200 font-sans leading-relaxed text-sm md:text-base text-slate-900 print:shadow-none print:border-none print:p-0">
+      {/* PÁGINA 1: Formato Oficial de Carta de Exposición de Motivos y Firma */}
+      <div className="w-full max-w-4xl bg-white p-8 md:p-14 rounded-2xl shadow-xl border border-slate-200 font-sans leading-relaxed text-sm md:text-base text-slate-900 mb-8 print:shadow-none print:border-none print:p-0 print:mb-0">
         
         {/* Encabezado Fecha y Ciudad */}
         <div className="text-right font-semibold text-slate-800 mb-8 font-mono">
@@ -202,22 +202,6 @@ export function EmergencyLetter({ idData, vitals, symptoms, idImage, insurerName
             </div>
           )}
 
-          {/* Anexo B: Foto de la Cédula de Identidad */}
-          <div className="bg-slate-50 p-4 rounded-xl border border-slate-200 space-y-2">
-            <div className="font-bold text-slate-900 uppercase text-xs tracking-wider font-mono">
-              Anexo B: Copia Escaneada del Documento de Identidad (Cédula):
-            </div>
-            {idImage ? (
-              <div className="flex justify-center bg-white p-2 border border-slate-300 rounded-lg max-h-48 overflow-hidden">
-                <img src={idImage} alt="Cédula de Identidad" className="max-h-44 object-contain rounded" />
-              </div>
-            ) : (
-              <div className="p-4 bg-white border border-slate-200 rounded-lg text-xs font-mono text-slate-500 text-center">
-                [ Cédula de Identidad N° {formData.idNumber} - Escaneo Biométrico Verificado en Sistema ]
-              </div>
-            )}
-          </div>
-
           <p className="text-xs text-slate-600">
             Declaro bajo fe de juramento y consentimiento informado que la información aquí contenida es fiel a la realidad y refleja con exactitud la ocurrencia de los hechos. Solicito formalmente la procedencia y cobertura de los gastos médicos derivados conforme a las condiciones de la póliza contratada.
           </p>
@@ -225,7 +209,7 @@ export function EmergencyLetter({ idData, vitals, symptoms, idImage, insurerName
         </div>
 
         {/* Firma Digital con Panel táctil/ratón */}
-        <div className="mt-12 pt-6 border-t border-slate-300 grid grid-cols-1 md:grid-cols-2 gap-8 font-sans">
+        <div className="mt-10 pt-6 border-t border-slate-300 grid grid-cols-1 md:grid-cols-2 gap-8 font-sans">
           <div className="space-y-2">
             <div className="flex items-center justify-between">
               <p className="font-bold text-slate-900 text-xs uppercase tracking-wider">
@@ -280,6 +264,47 @@ export function EmergencyLetter({ idData, vitals, symptoms, idImage, insurerName
           </div>
         </div>
 
+      </div>
+
+      {/* PÁGINA 2: Anexo de Documento de Identidad (Cédula Escaneada) */}
+      <div className="w-full max-w-4xl bg-white p-8 md:p-14 rounded-2xl shadow-xl border border-slate-200 font-sans leading-relaxed text-sm md:text-base text-slate-900 print:shadow-none print:border-none print:p-0 print:break-before-page">
+        <div className="border-b-2 border-slate-900 pb-4 mb-6 flex justify-between items-center">
+          <div>
+            <h2 className="font-extrabold text-slate-900 text-lg uppercase tracking-wide">ANEXO B: DOCUMENTO DE IDENTIDAD (CÉDULA)</h2>
+            <p className="text-xs text-slate-500 font-mono">Expediente de Siniestro - {formData.insurerName}</p>
+          </div>
+          <span className="text-xs font-mono font-bold bg-slate-100 text-slate-700 px-3 py-1 rounded-full border border-slate-300">
+            PÁGINA 2 / 2
+          </span>
+        </div>
+
+        <div className="space-y-6">
+          <div className="bg-slate-50 p-6 rounded-2xl border-2 border-dashed border-slate-300 flex flex-col items-center justify-center min-h-[400px]">
+            {idImage ? (
+              <div className="flex flex-col items-center gap-4">
+                <img src={idImage} alt="Cédula de Identidad Escaneada" className="max-h-[350px] max-w-full object-contain rounded-xl shadow-md border border-slate-200" />
+                <p className="text-xs font-mono text-emerald-700 font-bold bg-emerald-50 px-4 py-1.5 rounded-full border border-emerald-200">
+                  ✓ Documento Escaneado Biométricamente y Validado
+                </p>
+              </div>
+            ) : (
+              <div className="flex flex-col items-center gap-3 text-center p-8">
+                <ShieldCheck className="w-16 h-16 text-slate-400" />
+                <p className="text-base font-bold text-slate-700">Copia Digitalizada de Cédula de Identidad</p>
+                <p className="text-xs font-mono text-slate-500 max-w-md">
+                  Cédula N° {formData.idNumber} registrada a nombre de {formData.fullName}. Verificada mediante consulta directa de Base de Datos.
+                </p>
+              </div>
+            )}
+          </div>
+
+          <div className="grid grid-cols-2 gap-4 font-mono text-xs bg-slate-50 p-4 rounded-xl border border-slate-200">
+            <div><span className="text-slate-500">Titular:</span> <span className="font-bold">{formData.fullName}</span></div>
+            <div><span className="text-slate-500">Cédula:</span> <span className="font-bold">{formData.idNumber}</span></div>
+            <div><span className="text-slate-500">Compañía Aseguradora:</span> <span className="font-bold">{formData.insurerName}</span></div>
+            <div><span className="text-slate-500">N° Póliza:</span> <span className="font-bold">{formData.policyNumber}</span></div>
+          </div>
+        </div>
       </div>
     </div>
   );

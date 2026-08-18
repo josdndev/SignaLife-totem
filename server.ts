@@ -427,9 +427,9 @@ Califica la calidad de 1 a 10. Si la calidad es mayor a 8, no necesitas llenar '
         1. Debes hacer máximo 10 preguntas en total en la conversación.
         2. Haz siempre UNA pregunta a la vez (por ejemplo, no pidas la ciudad y la fecha al mismo tiempo).
         3. Mantén un tono profesional, compasivo y directo.
-        4. La póliza de seguro ya fue verificada y seleccionada de la base de datos de la cédula (ej. Seguros Caracas CAR-884920). NO le preguntes al paciente por su número de póliza ni tipo de seguro.
+        4. La póliza de seguro (ej. Seguros Caracas), la ciudad (ej. Caracas) y la fecha (calculada automáticamente si dice "ayer", "hoy" o según la dirección) SE TOMAN AUTOMÁTICAMENTE. NUNCA le preguntes al paciente por su número de póliza, ni por la ciudad, ni por la fecha.
         5. La primera pregunta de la conversación debe ser estrictamente esta: "Hola, soy el asistente clínico de admisiones. Para tener el mayor contexto posible, por favor cuéntame: ¿Qué te ocurrió, en dónde sucedió (dirección exacta), qué día y a qué hora?".
-        6. Revisa estrictamente el historial. Una vez que tengas una idea clara de la emergencia médica Y hayas recopilado los 7 datos del seguro, tu ÚNICA respuesta debe ser la palabra exacta: "INTERVIEW_COMPLETE". No agregues nada más en esa respuesta final.
+        6. Revisa estrictamente el historial. Una vez que tengas una idea clara de la emergencia médica y los detalles básicos del suceso, finaliza con la palabra exacta: "INTERVIEW_COMPLETE". No agregues nada más en esa respuesta final.
       `;
 
       const response = await generateContentWithFallback([

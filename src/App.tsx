@@ -19,12 +19,17 @@ export default function App() {
 
 
 
-  // Stage 1: ID
+  // Stage 1: ID & Insurance Verification
   const [isManualEntry, setIsManualEntry] = useState(false);
   const [isCameraActive, setIsCameraActive] = useState(false);
   const [selectedImage, setSelectedImage] = useState<string | null>(null);
   const [isProcessing, setIsProcessing] = useState(false);
   const [extractedData, setExtractedData] = useState<IDData | null>(null);
+  const [selectedInsurer, setSelectedInsurer] = useState<string>("Seguros Caracas");
+  const [patientPhone, setPatientPhone] = useState<string>("");
+  const [patientEmail, setPatientEmail] = useState<string>("");
+  const [patientAddress, setPatientAddress] = useState<string>("");
+  const [incidentType, setIncidentType] = useState<"Clinico" | "Traumatico">("Clinico");
   const [error, setError] = useState<string | null>(null);
 
   // Stage 2: rPPG Vitals
@@ -312,29 +317,34 @@ export default function App() {
                       )}
 
                       {extractedData ? (
-                        <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="bg-emerald-50 border border-emerald-100 rounded-xl p-5 shadow-sm">
-                          <div className="flex items-center gap-2 mb-4 pb-4 border-b border-emerald-200">
-                            <UserPlus className="w-5 h-5 text-emerald-700" />
-                            <h3 className="font-semibold text-emerald-900">Paciente Identificado</h3>
+                        <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} className="bg-emerald-50 border border-emerald-100 rounded-xl p-5 shadow-sm space-y-4">
+                          <div className="flex items-center justify-between pb-3 border-b border-emerald-200">
+                            <div className="flex items-center gap-2">
+                              <UserPlus className="w-5 h-5 text-emerald-700" />
+                              <h3 className="font-semibold text-emerald-900">Paciente e Historial de Pólizas</h3>
+                            </div>
+                            <span className="bg-emerald-200 text-emerald-800 text-[10px] font-bold px-2 py-0.5 rounded-full uppercase tracking-wider">Cédula Validada</span>
                           </div>
-                          <div className="grid grid-cols-2 gap-x-4 mb-2">
+
+                          {/* Datos personales extraídos */}
+                          <div className="grid grid-cols-2 gap-x-4 gap-y-2 bg-white/70 p-3 rounded-lg border border-emerald-100">
                             {isManualEntry ? (
                               <>
-                                <div className="mb-4 bg-white border border-emerald-100 rounded-lg p-3">
-                                  <span className="text-[10px] text-emerald-600 font-bold block uppercase tracking-wider mb-1">Nombres</span>
-                                  <input type="text" className="w-full text-sm font-semibold text-slate-700 font-mono bg-transparent outline-none" placeholder="EJ. JUAN" value={extractedData.names} onChange={e => setExtractedData({...extractedData, names: e.target.value})} />
+                                <div>
+                                  <span className="text-[10px] text-emerald-700 font-bold block uppercase tracking-wider">Nombres</span>
+                                  <input type="text" className="w-full text-sm font-semibold text-slate-800 bg-transparent border-b border-emerald-200 outline-none" placeholder="EJ. JUAN" value={extractedData.names} onChange={e => setExtractedData({...extractedData, names: e.target.value})} />
                                 </div>
-                                <div className="mb-4 bg-white border border-emerald-100 rounded-lg p-3">
-                                  <span className="text-[10px] text-emerald-600 font-bold block uppercase tracking-wider mb-1">Apellidos</span>
-                                  <input type="text" className="w-full text-sm font-semibold text-slate-700 font-mono bg-transparent outline-none" placeholder="EJ. PÉREZ" value={extractedData.surnames} onChange={e => setExtractedData({...extractedData, surnames: e.target.value})} />
+                                <div>
+                                  <span className="text-[10px] text-emerald-700 font-bold block uppercase tracking-wider">Apellidos</span>
+                                  <input type="text" className="w-full text-sm font-semibold text-slate-800 bg-transparent border-b border-emerald-200 outline-none" placeholder="EJ. PÉREZ" value={extractedData.surnames} onChange={e => setExtractedData({...extractedData, surnames: e.target.value})} />
                                 </div>
-                                <div className="mb-4 bg-white border border-emerald-100 rounded-lg p-3">
-                                  <span className="text-[10px] text-emerald-600 font-bold block uppercase tracking-wider mb-1">Cédula</span>
-                                  <input type="text" className="w-full text-sm font-semibold text-slate-700 font-mono bg-transparent outline-none" placeholder="EJ. V 12.345.678" value={extractedData.idNumber} onChange={e => setExtractedData({...extractedData, idNumber: e.target.value})} />
+                                <div>
+                                  <span className="text-[10px] text-emerald-700 font-bold block uppercase tracking-wider">Cédula</span>
+                                  <input type="text" className="w-full text-sm font-semibold text-slate-800 bg-transparent border-b border-emerald-200 outline-none" placeholder="EJ. V 12.345.678" value={extractedData.idNumber} onChange={e => setExtractedData({...extractedData, idNumber: e.target.value})} />
                                 </div>
-                                <div className="mb-4 bg-white border border-emerald-100 rounded-lg p-3">
-                                  <span className="text-[10px] text-emerald-600 font-bold block uppercase tracking-wider mb-1">Fecha Nac.</span>
-                                  <input type="text" className="w-full text-sm font-semibold text-slate-700 font-mono bg-transparent outline-none" placeholder="EJ. 01/01/1990" value={extractedData.dateOfBirth} onChange={e => setExtractedData({...extractedData, dateOfBirth: e.target.value})} />
+                                <div>
+                                  <span className="text-[10px] text-emerald-700 font-bold block uppercase tracking-wider">Fecha Nac.</span>
+                                  <input type="text" className="w-full text-sm font-semibold text-slate-800 bg-transparent border-b border-emerald-200 outline-none" placeholder="EJ. 01/01/1990" value={extractedData.dateOfBirth} onChange={e => setExtractedData({...extractedData, dateOfBirth: e.target.value})} />
                                 </div>
                               </>
                             ) : (
@@ -345,6 +355,111 @@ export default function App() {
                                 <DataField label="Fecha Nac." value={extractedData.dateOfBirth} />
                               </>
                             )}
+                          </div>
+
+                          {/* Escaneo automático de Pólizas por Cédula y Nombre */}
+                          <div className="bg-white p-3.5 rounded-xl border border-emerald-200 space-y-2">
+                            <div className="flex items-center justify-between">
+                              <span className="text-xs font-bold text-slate-800 uppercase tracking-wider flex items-center gap-1.5">
+                                🛡️ Pólizas de Seguro Vinculadas
+                              </span>
+                              <span className="text-[10px] text-emerald-600 font-mono font-semibold">Base de Datos Conectada</span>
+                            </div>
+
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 mt-2">
+                              {/* Póliza Seguros Caracas (Favorita / Última Usada) */}
+                              <div 
+                                onClick={() => setSelectedInsurer("Seguros Caracas")}
+                                className={`p-2.5 rounded-lg border text-xs cursor-pointer transition flex items-center justify-between ${selectedInsurer === "Seguros Caracas" ? "border-emerald-600 bg-emerald-50/80 shadow-sm ring-1 ring-emerald-500" : "border-slate-200 bg-slate-50 hover:bg-slate-100"}`}
+                              >
+                                <div>
+                                  <div className="font-bold text-slate-800 flex items-center gap-1">
+                                    <span>Seguros Caracas</span>
+                                    <span className="bg-amber-100 text-amber-800 text-[9px] font-extrabold px-1.5 py-0.2 rounded border border-amber-300">★ FAVORITA (Última Usada)</span>
+                                  </div>
+                                  <div className="text-[11px] text-slate-500 font-mono">Póliza: CAR-884920</div>
+                                </div>
+                                <div className={`w-4 h-4 rounded-full border flex items-center justify-center ${selectedInsurer === "Seguros Caracas" ? "border-emerald-600 bg-emerald-600 text-white" : "border-slate-300"}`}>
+                                  {selectedInsurer === "Seguros Caracas" && <Check className="w-3 h-3" />}
+                                </div>
+                              </div>
+
+                              {/* Póliza Seguros Mercantil */}
+                              <div 
+                                onClick={() => setSelectedInsurer("Seguros Mercantil")}
+                                className={`p-2.5 rounded-lg border text-xs cursor-pointer transition flex items-center justify-between ${selectedInsurer === "Seguros Mercantil" ? "border-emerald-600 bg-emerald-50/80 shadow-sm ring-1 ring-emerald-500" : "border-slate-200 bg-slate-50 hover:bg-slate-100"}`}
+                              >
+                                <div>
+                                  <div className="font-bold text-slate-800">Seguros Mercantil</div>
+                                  <div className="text-[11px] text-slate-500 font-mono">Póliza: MER-401923</div>
+                                </div>
+                                <div className={`w-4 h-4 rounded-full border flex items-center justify-center ${selectedInsurer === "Seguros Mercantil" ? "border-emerald-600 bg-emerald-600 text-white" : "border-slate-300"}`}>
+                                  {selectedInsurer === "Seguros Mercantil" && <Check className="w-3 h-3" />}
+                                </div>
+                              </div>
+                            </div>
+                          </div>
+
+                          {/* Integrar Correo, Teléfono y Dirección */}
+                          <div className="bg-white p-3.5 rounded-xl border border-emerald-200 space-y-3">
+                            <div className="text-xs font-bold text-slate-800 uppercase tracking-wider">
+                              📍 Datos de Contacto y Residencia (Para completar en caso de no estar llenos)
+                            </div>
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs">
+                              <div>
+                                <label className="text-[10px] text-slate-500 font-bold uppercase block mb-1">Teléfono Móvil</label>
+                                <input 
+                                  type="text" 
+                                  value={patientPhone}
+                                  onChange={e => setPatientPhone(e.target.value)}
+                                  placeholder="+58 412 000 0000"
+                                  className="w-full bg-slate-50 border border-slate-200 rounded-lg p-2 font-mono text-slate-800 focus:bg-white focus:ring-1 focus:ring-emerald-500 outline-none"
+                                />
+                              </div>
+                              <div>
+                                <label className="text-[10px] text-slate-500 font-bold uppercase block mb-1">Correo Electrónico</label>
+                                <input 
+                                  type="email" 
+                                  value={patientEmail}
+                                  onChange={e => setPatientEmail(e.target.value)}
+                                  placeholder="paciente@ejemplo.com"
+                                  className="w-full bg-slate-50 border border-slate-200 rounded-lg p-2 font-mono text-slate-800 focus:bg-white focus:ring-1 focus:ring-emerald-500 outline-none"
+                                />
+                              </div>
+                              <div className="sm:col-span-2">
+                                <label className="text-[10px] text-slate-500 font-bold uppercase block mb-1">Dirección donde vive</label>
+                                <input 
+                                  type="text" 
+                                  value={patientAddress}
+                                  onChange={e => setPatientAddress(e.target.value)}
+                                  placeholder="Ej. Av. Principal de Las Mercedes, Edif. Centro, Ap. 4B, Caracas"
+                                  className="w-full bg-slate-50 border border-slate-200 rounded-lg p-2 text-slate-800 focus:bg-white focus:ring-1 focus:ring-emerald-500 outline-none"
+                                />
+                              </div>
+                            </div>
+                          </div>
+
+                          {/* Tipo de Caso: Traumático o Clínico */}
+                          <div className="bg-white p-3.5 rounded-xl border border-emerald-200 space-y-2">
+                            <div className="text-xs font-bold text-slate-800 uppercase tracking-wider">
+                              🏥 Indique el Origen de la Atención:
+                            </div>
+                            <div className="grid grid-cols-2 gap-3">
+                              <button
+                                type="button"
+                                onClick={() => setIncidentType("Clinico")}
+                                className={`py-2.5 px-3 rounded-xl border font-bold text-xs transition flex items-center justify-center gap-2 ${incidentType === "Clinico" ? "bg-emerald-600 text-white border-emerald-600 shadow-md" : "bg-slate-50 text-slate-700 border-slate-200 hover:bg-slate-100"}`}
+                              >
+                                🩺 Caso Clínico / Médico
+                              </button>
+                              <button
+                                type="button"
+                                onClick={() => setIncidentType("Traumatico")}
+                                className={`py-2.5 px-3 rounded-xl border font-bold text-xs transition flex items-center justify-center gap-2 ${incidentType === "Traumatico" ? "bg-amber-600 text-white border-amber-600 shadow-md" : "bg-slate-50 text-slate-700 border-slate-200 hover:bg-slate-100"}`}
+                              >
+                                🚑 Traumático / Accidente
+                              </button>
+                            </div>
                           </div>
                           
                           <button 

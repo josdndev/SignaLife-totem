@@ -7,9 +7,11 @@ export default defineConfig(() => {
   return {
     plugins: [react(), tailwindcss()],
     resolve: {
-      alias: {
-        '@': path.resolve(__dirname, '.'),
-      },
+      alias: [
+        { find: '@', replacement: path.resolve(__dirname, '.') },
+        { find: /^@mediapipe\/face_mesh$/, replacement: path.resolve(__dirname, 'src/shims/face_mesh.ts') },
+        { find: /^@mediapipe\/drawing_utils$/, replacement: path.resolve(__dirname, 'src/shims/drawing_utils.ts') },
+      ],
     },
     server: {
       // HMR is disabled in AI Studio via DISABLE_HMR env var.

@@ -1,8 +1,10 @@
+import Tesseract from "tesseract.js";
 import express from "express";
 import path from "path";
 import { createServer as createViteServer } from "vite";
 import { GoogleGenAI } from "@google/genai";
 import "dotenv/config";
+import { processRPPGOnServer } from "./src/utils/rppgServerDsp.ts";
 const Type = {
   STRING: "string",
   OBJECT: "object",
@@ -16,8 +18,8 @@ async function startServer() {
   const app = express();
   const PORT = process.env.PORT ? Number(process.env.PORT) : 3000;
 
-  const RESIDENT_MODEL = "gemma3:4b"; // Gemma 4 light equivalent (supports vision)
-  const SPECIALIST_MODEL = "medgemma"; // Especialista médico estricto
+  const RESIDENT_MODEL = "gemma4:e2b";
+  const SPECIALIST_MODEL = "gemma4:e2b"; // Especialista médico estricto
 
   // Increase payload size for base64 images
   app.use(express.json({ limit: '10mb' }));
@@ -31,10 +33,11 @@ async function startServer() {
       surnames: { type: Type.STRING, description: "Apellidos (Surnames)" },
       dateOfBirth: { type: Type.STRING, description: "Fecha de Nacimiento (e.g. 10-12-98)" },
       maritalStatus: { type: Type.STRING, description: "Estado Civil (e.g. SOLTERO)" },
+      gender: { type: Type.STRING, description: "Sexo/Género inferido a partir de los nombres o del estado civil (e.g. MASCULINO o FEMENINO)" },
       issueDate: { type: Type.STRING, description: "Fecha de Expedición (e.g. 08-05-17)" },
       expiryDate: { type: Type.STRING, description: "Fecha de Vencimiento (e.g. 05-2027)" }
     },
-    required: ["idNumber", "names", "surnames", "dateOfBirth", "maritalStatus", "issueDate", "expiryDate"]
+    required: ["idNumber", "names", "surnames", "dateOfBirth", "maritalStatus", "gender", "issueDate", "expiryDate"]
   };
 
   function buildOllamaPayload(contents: any, config: any, modelName: string = RESIDENT_MODEL) {
@@ -73,14 +76,87 @@ async function startServer() {
       format: config?.responseMimeType === "application/json" ? "json" : undefined,
       options: {
         temperature: config?.temperature ?? 0.7,
-        num_ctx: 16384
+        num_ctx: 4096
       }
     };
   }
 
+  
+  async function callDeepSeek(contents: any, config: any) {
+    const apiKey = process.env.DEEPSEEK_API_KEY || "";
+    
+    // Extract text from contents
+    let promptText = "";
+    const extractText = (items: any[]) => {
+      for (const item of items) {
+        if (typeof item === 'string') {
+          promptText += item + "\n";
+        } else if (item.text) {
+          promptText += item.text + "\n";
+        } else if (item.parts) {
+          extractText(item.parts);
+        } else if (item.role && item.parts) {
+          promptText += `${item.role}: `;
+          extractText(item.parts);
+        }
+      }
+    };
+    if (Array.isArray(contents)) extractText(contents);
+    else extractText([contents]);
+
+    if (config.responseSchema) {
+       promptText += "\n\nYou MUST return ONLY valid JSON matching this schema:\n" + JSON.stringify(config.responseSchema, null, 2);
+    }
+
+    console.log("LLamando a DeepSeek-Chat...");
+    
+    const payload: any = {
+      model: "deepseek-chat",
+      messages: [{ role: "user", content: promptText }],
+      temperature: config.temperature || 0.1,
+    };
+    
+    if (config.responseMimeType === "application/json") {
+      payload.response_format = { type: "json_object" };
+    }
+
+    const response = await fetch("https://api.deepseek.com/v1/chat/completions", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "Authorization": `Bearer ${apiKey}`
+      },
+      body: JSON.stringify(payload)
+    });
+
+    if (!response.ok) {
+       const err = await response.text();
+       throw new Error(`DeepSeek Error: ${err}`);
+    }
+
+    const data = await response.json();
+    let reply = data.choices[0].message.content;
+    
+    if (config.responseMimeType === "application/json") {
+       reply = reply.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim();
+    }
+    
+    return { text: reply };
+  }
+
   async function generateContentWithFallback(contents: any, config: any, modelName: string = RESIDENT_MODEL) {
+    // 1. Prioridad Absoluta: DeepSeek
+    try {
+      return await callDeepSeek(contents, config);
+    } catch (error: any) {
+      console.error("Error en llamada a DeepSeek:", error?.message || error);
+      if (process.env.USE_OLLAMA_FALLBACK !== "true") {
+        throw error;
+      }
+    }
+
     if (process.env.GEMINI_API_KEY) {
-      console.log(`Llamando a Gemini (gemini-3.1-flash-lite) en lugar de ${modelName}`);
+      console.log(`Llamando a Gemini (gemini-1.5-flash-8b) en lugar de ${modelName}`);
       const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
       
       let parts: any[] = [];
@@ -106,25 +182,31 @@ async function startServer() {
         extractData([contents]);
       }
 
-      try {
-        const response = await ai.models.generateContent({
-          model: 'gemini-3.1-flash-lite',
-          contents: [
-            {
-              role: 'user',
-              parts: parts
+      let lastError;
+      for (let attempt = 1; attempt <= 8; attempt++) {
+        try {
+          const response = await ai.models.generateContent({
+            model: 'gemini-1.5-flash',
+            contents: [
+              {
+                role: 'user',
+                parts: parts
+              }
+            ],
+            config: {
+              temperature: config?.temperature ?? 0.7,
+              responseMimeType: config?.responseMimeType,
+              responseSchema: config?.responseSchema
             }
-          ],
-          config: {
-            temperature: config?.temperature ?? 0.7,
-            responseMimeType: config?.responseMimeType,
-            responseSchema: config?.responseSchema
-          }
-        });
-        return { text: response.text || "" };
-      } catch (error: any) {
-         console.error("Error conectando con Gemini:", error);
-         throw error;
+          });
+          return { text: response.text || "" };
+        } catch (error: any) {
+           console.error(`Error conectando con Gemini (Intento ${attempt}/8):`, error);
+           lastError = error;
+           if (attempt === 8) {
+             throw lastError;
+           }
+        }
       }
     }
 
@@ -159,26 +241,37 @@ async function startServer() {
       if (process.env.GEMINI_API_KEY) {
         console.log("Transcribiendo audio con Gemini...");
         const ai = new GoogleGenAI({ apiKey: process.env.GEMINI_API_KEY });
-        const response = await ai.models.generateContent({
-            model: 'gemini-3.1-flash-lite',
-            contents: [
-              {
-                role: 'user',
-                parts: [
+        let response;
+        let lastError;
+        for (let attempt = 1; attempt <= 8; attempt++) {
+          try {
+            response = await ai.models.generateContent({
+                model: 'gemini-1.5-flash',
+                contents: [
                   {
-                    inlineData: {
-                      data: base64Data,
-                      mimeType: mimeType || 'audio/webm'
-                    }
-                  },
-                  {
-                    text: "Transcribe el siguiente audio médico en español. Responde ÚNICAMENTE con el texto transcrito sin agregar comillas, saludos ni contexto."
+                    role: 'user',
+                    parts: [
+                      {
+                        inlineData: {
+                          data: base64Data,
+                          mimeType: mimeType || 'audio/webm'
+                        }
+                      },
+                      {
+                        text: "Transcribe el siguiente audio médico en español. Responde ÚNICAMENTE con el texto transcrito sin agregar comillas, saludos ni contexto."
+                      }
+                    ]
                   }
                 ]
-              }
-            ]
-        });
-        let text = response.text || "";
+            });
+            break;
+          } catch (error: any) {
+            console.error(`Error transcribiendo con Gemini (Intento ${attempt}/8):`, error);
+            lastError = error;
+            if (attempt === 8) throw lastError;
+          }
+        }
+        let text = response?.text || "";
         return res.json({ text: text.trim() });
       }
 
@@ -213,33 +306,58 @@ async function startServer() {
         return res.status(400).json({ error: "imageBase64 and mimeType are required." });
       }
 
-      // Extract raw base64 data if it includes data URI wrapper
       const base64Data = imageBase64.replace(/^data:image\/\w+;base64,/, "");
+      
+      console.log("Iniciando Tesseract OCR...");
+      const buffer = Buffer.from(base64Data, 'base64');
+      const { data: { text: ocrText } } = await Tesseract.recognize(buffer, 'spa');
+      console.log("Texto OCR extraído:", ocrText);
 
-      const response = await generateContentWithFallback([
-          {
-            inlineData: {
-              data: base64Data,
-              mimeType: mimeType,
-            }
-          },
-          "Extract all the information from this ID card (Cédula de Identidad de Venezuela) and return it structured according to the expected JSON format."
-        ],
+      console.log("Enviando texto OCR a DeepSeek para estructurar en JSON...");
+      const prompt = `Analiza este texto extraído por OCR de una Cédula de Identidad venezolana:
+"""
+${ocrText}
+"""
+
+REGLAS DE EXTRACCIÓN PARA CÉDULAS DE VENEZUELA:
+1. 'names': Nombres de pila completos (ej. "JOSE DAVID").
+2. 'surnames': Apellidos completos (ej. "NARANJO MALDONADO"). En las cédulas de Venezuela los APELLIDOS van arriba de los nombres (frecuentemente precedidos por 'APELLIDOS', 'apellidos' o 'amunos'). NUNCA dejes surnames vacío si hay palabras correspondientes en el texto.
+3. 'idNumber': Número de Cédula con formato (ej. "V-31.901.967").
+4. 'dateOfBirth': Fecha de nacimiento DD/MM/AAAA.
+5. 'maritalStatus': Estado civil (SOLTERO, CASADO, VIUDO, DIVORCIADO).
+6. 'gender': MASCULINO o FEMENINO según los nombres o sufijo civil.
+
+Devuélvelo estrictamente en el formato JSON esperado.`;
+      
+      const response = await generateContentWithFallback(
+        [ prompt ],
         {
           responseMimeType: "application/json",
           responseSchema: responseSchema,
+          temperature: 0.1,
         }
       );
 
       let text = response.text;
       if (!text) {
-        throw new Error("No data returned from Gemini/Ollama");
+        throw new Error("No data returned from AI");
       }
       
-      // Limpiar markdown (ej. ```json ... ```)
       text = text.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim();
 
       const extractedData = JSON.parse(text);
+      if (extractedData.names) extractedData.names = extractedData.names.trim().toUpperCase();
+      if (extractedData.surnames) extractedData.surnames = extractedData.surnames.trim().toUpperCase();
+      
+      // Si por alguna razón el OCR colocó todos los nombres y apellidos en un solo campo:
+      if (extractedData.names && (!extractedData.surnames || extractedData.surnames.length === 0)) {
+        const words = extractedData.names.split(/\s+/);
+        if (words.length >= 4) {
+          extractedData.names = `${words[0]} ${words[1]}`;
+          extractedData.surnames = words.slice(2).join(' ');
+        }
+      }
+      
       res.json({ data: extractedData });
     } catch (error: any) {
       console.error("Extraction error:", error);
@@ -300,6 +418,22 @@ async function startServer() {
     }
   });
 
+  // Procesamiento seguro de rPPG con algoritmo POS y análisis espectral en servidor
+  app.post("/api/rppg/process", async (req, res) => {
+    try {
+      const { rawRed, rawGreen, rawBlue, rawMotion } = req.body;
+      if (!rawRed || !rawGreen || !rawBlue) {
+        return res.status(400).json({ error: "Faltan las series de canales cromáticos (R, G, B)." });
+      }
+
+      const result = processRPPGOnServer({ rawRed, rawGreen, rawBlue, rawMotion });
+      res.json(result);
+    } catch (error: any) {
+      console.error("Error en procesamiento rPPG del servidor:", error);
+      res.status(500).json({ error: error.message || "Error procesando rPPG en servidor" });
+    }
+  });
+
   app.post("/api/triage", async (req, res) => {
     try {
       const { symptoms, vitals, imageBase64, mimeType } = req.body;
@@ -310,26 +444,17 @@ async function startServer() {
           triageLevel: { type: Type.STRING, description: "Nivel de Triage: Rojo, Naranja, Amarillo, Verde, o Azul" },
           destination: { type: Type.STRING, description: "Ubicación sugerida: Emergencia o Ambulatorio" },
           waitTime: { type: Type.STRING, description: "Tiempo de espera aproximado (ej. Inmediato, 10 min, 60 min...)" },
-          clinicalSummary: { type: Type.STRING, description: "Resumen clínico y justificación de la clasificación" }
+          clinicalSummary: { type: Type.STRING, description: "Carta Narrativa redactada en primera persona, corrigiendo errores ortográficos del paciente. Debe tener al menos 40 palabras y ser formal." },
+          doctorSummary: { type: Type.STRING, description: "Resumen médico técnico del motivo de consulta orientado a un doctor (Sintomatología médica, terminología profesional, conciso y objetivo)." }
         },
-        required: ["triageLevel", "destination", "waitTime", "clinicalSummary"]
+        required: ["triageLevel", "destination", "waitTime", "clinicalSummary", "doctorSummary"]
       };
 
       const parts: any[] = [
         {
-          text: `Eres un experto en triage médico (Sistema Manchester). Analiza lo siguiente:\n\nSíntomas reportados por el paciente: "${symptoms || 'Ninguno'}"\n\nSignos Vitales: ${JSON.stringify(vitals, null, 2)}\n\nTambién se adjunta una fotografía del paciente durante la lectura. Proporciona una clasificación de triage adecuada en el JSON.`
+          text: `Eres un experto en triage médico. Analiza lo siguiente:\n\nSíntomas reportados por el paciente: "${symptoms || 'Ninguno'}"\n\nSignos Vitales: ${JSON.stringify(vitals, null, 2)}\n\n1. Proporciona el nivel de triage adecuado.\n2. En el campo \'clinicalSummary\', DEBES redactar una \'Carta Narrativa\' formal en PRIMERA PERSONA (Ej. "Yo, el paciente, declaro que me encontraba..."). Corrige todos los errores ortográficos del relato original y expande la redacción para que suene profesional, coherente y detallada, garantizando que tenga MÍNIMO 40 PALABRAS. NUNCA menciones ni incluyas los signos vitales en esta carta narrativa.\n3. En el campo \'doctorSummary\', elabora un resumen clínico técnico objetivo orientado a un médico tratante utilizando terminología médica apropiada.`
         }
       ];
-
-      if (imageBase64 && mimeType) {
-        const base64Data = imageBase64.replace(/^data:image\/\w+;base64,/, "");
-        parts.unshift({
-          inlineData: {
-            data: base64Data,
-            mimeType: mimeType
-          }
-        });
-      }
 
       const residentResponse = await generateContentWithFallback(
         [{ role: "user", parts }],
@@ -369,7 +494,9 @@ Signos Vitales: ${JSON.stringify(vitals, null, 2)}
 === TRIAGE DEL RESIDENTE ===
 ${JSON.stringify(triageData, null, 2)}
 
-Califica la calidad de 1 a 10. Si la calidad es mayor a 8, no necesitas llenar 'correctedTriage'. Si es <= 8, completa obligatoriamente 'correctedTriage' con el triage corregido.
+1. Si es correcto, devuelve score 10 y NO incluyas 'correctedTriage'.
+2. Si tiene fallas, devuelve un score menor a 10 y proporciona un 'correctedTriage'.
+IMPORTANTE: Si corriges el triage, DEBES mantener el campo 'clinicalSummary' como una Carta Narrativa redactada en PRIMERA PERSONA, con buena ortografía y de MÍNIMO 40 palabras, y SIN mencionar los signos vitales. También DEBES incluir el campo 'doctorSummary' con un resumen clínico técnico y objetivo orientado al médico tratante. Si el score es <= 8, completa obligatoriamente 'correctedTriage' con el triage corregido.
       `;
 
       const specialistResponse = await generateContentWithFallback(
@@ -409,27 +536,21 @@ Califica la calidad de 1 a 10. Si la calidad es mayor a 8, no necesitas llenar '
     try {
       const { history } = req.body;
       const prompt = `
-        Eres un Asistente Clínico de Admisiones. Tu rol es doble: realizar un triage médico de urgencias y recolectar los datos para la carta de siniestro del seguro.
+        Eres un Médico Orientador de Admisiones. Tu rol es realizar una breve entrevista clínica para documentar la Enfermedad Actual del paciente.
         
-        Objetivo Médico:
-        - Determinar el motivo principal de consulta y recabar síntomas relevantes.
-
-        Objetivo de Seguro (Debes preguntar esto paso a paso):
-        1. Ciudad de la declaración.
-        2. Número de póliza.
-        3. Fecha del suceso.
-        4. Hora del suceso.
-        5. Lugar del suceso.
-        6. Descripción de los hechos (qué pasó).
-        7. Daños o lesiones.
-
+        Objetivos de la entrevista:
+        - Determinar el motivo de consulta principal (CÓMO ocurrió o qué síntomas tiene).
+        - Determinar CUÁNDO ocurrió de forma relativa o absoluta (ej. "hace 2 días", "ayer por la tarde"). No pidas horas o minutos exactos.
+        - Determinar DÓNDE ocurrió en términos generales (ej. "en mi casa", "jugando fútbol en la calle"). NUNCA exijas una dirección exacta, municipio o calle.
+        
         Reglas:
-        1. Debes hacer máximo 10 preguntas en total en la conversación.
-        2. Haz siempre UNA pregunta a la vez (por ejemplo, no pidas la ciudad y la fecha al mismo tiempo).
-        3. Mantén un tono profesional, compasivo y directo.
-        4. La póliza de seguro (ej. Seguros Caracas), la ciudad (ej. Caracas) y la fecha (calculada automáticamente si dice "ayer", "hoy" o según la dirección) SE TOMAN AUTOMÁTICAMENTE. NUNCA le preguntes al paciente por su número de póliza, ni por la ciudad, ni por la fecha.
-        5. La primera pregunta de la conversación debe ser estrictamente esta: "Hola, soy el asistente clínico de admisiones. Para tener el mayor contexto posible, por favor cuéntame: ¿Qué te ocurrió, en dónde sucedió (dirección exacta), qué día y a qué hora?".
-        6. Revisa estrictamente el historial. Una vez que tengas una idea clara de la emergencia médica y los detalles básicos del suceso, finaliza con la palabra exacta: "INTERVIEW_COMPLETE". No agregues nada más en esa respuesta final.
+        1. Haz UNA sola pregunta corta y empática a la vez. No agobies al paciente.
+        2. El tono debe ser muy profesional, compasivo y directo (sin formalismos excesivos).
+        3. No preguntes datos administrativos como cédula, póliza, sede o aseguradora (esos datos ya se recolectan automáticamente en otra pantalla).
+        4. Transforma mentalmente fechas relativas ("ayer") a tu comprensión del caso, no exijas que te digan la fecha exacta con formato de calendario.
+        5. La primera pregunta debe ser únicamente: "Hola, soy el asistente médico de admisiones. Por favor cuéntame: ¿Qué te ocurrió, cómo pasó, dónde estabas y cuándo ocurrió?".
+        6. Si el paciente menciona dolor, indaga brevemente su intensidad (del 1 al 10) y si se irradia.
+        7. Cuando tengas claro el panorama básico de lo sucedido (qué, cómo, cuándo, dónde), finaliza INMEDIATAMENTE tu turno respondiendo ÚNICAMENTE con la palabra: "INTERVIEW_COMPLETE". No agregues nada más a ese mensaje final.
       `;
 
       const response = await generateContentWithFallback([

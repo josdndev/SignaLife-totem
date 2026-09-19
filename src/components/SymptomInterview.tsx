@@ -1,5 +1,5 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { Send, User, Stethoscope, ChevronRight, Mic, MicOff, Keyboard as KeyboardIcon } from 'lucide-react';
+import { Send, User, Stethoscope, ChevronRight, Mic, MicOff, Keyboard as KeyboardIcon, X } from 'lucide-react';
 import { motion, AnimatePresence } from 'motion/react';
 import Keyboard from 'react-simple-keyboard';
 import 'simple-keyboard/build/css/index.css';
@@ -21,9 +21,13 @@ export function SymptomInterview({ onComplete }: SymptomInterviewProps) {
   const [isListening, setIsListening] = useState(false);
   const [micError, setMicError] = useState<string | null>(null);
   const [showKeyboard, setShowKeyboard] = useState(false);
+  const [liveTranscript, setLiveTranscript] = useState<string>('');
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const audioChunksRef = useRef<Blob[]>([]);
+  const recognitionRef = useRef<any>(null);
+  const speechTranscriptRef = useRef<string>('');
+  const activeAbortControllerRef = useRef<AbortController | null>(null);
   const keyboardRef = useRef<any>(null);
   const didInit = useRef(false);
 
@@ -49,11 +53,18 @@ export function SymptomInterview({ onComplete }: SymptomInterviewProps) {
 
   const requestDoctorResponse = async (history: ChatMessage[]) => {
     setIsLoading(true);
+    if (activeAbortControllerRef.current) {
+      activeAbortControllerRef.current.abort();
+    }
+    const controller = new AbortController();
+    activeAbortControllerRef.current = controller;
+
     try {
       const response = await fetch('/api/interview', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ history }),
+        signal: controller.signal
       });
       if (response.ok) {
         const data = await response.json();
@@ -73,12 +84,34 @@ export function SymptomInterview({ onComplete }: SymptomInterviewProps) {
           speak(replyTxt);
         }
       }
-    } catch (e) {
+    } catch (e: any) {
+      if (e.name === 'AbortError') {
+        console.log("Consulta cancelada");
+        return;
+      }
       console.error(e);
       const errorMsg = "Hubo un error de conexión, pero continuemos. ¿Algo más?";
       setMessages(prev => [...prev, { role: 'model', content: errorMsg }]);
       speak(errorMsg);
+    } finally {
+      if (activeAbortControllerRef.current === controller) {
+        activeAbortControllerRef.current = null;
+        setIsLoading(false);
+      }
     }
+  };
+
+  const handleCancelPending = () => {
+    if (activeAbortControllerRef.current) {
+      activeAbortControllerRef.current.abort();
+      activeAbortControllerRef.current = null;
+    }
+    setMessages(prev => {
+      if (prev.length > 0 && prev[prev.length - 1].content.startsWith('🎤 Nota de voz')) {
+        return prev.slice(0, -1);
+      }
+      return prev;
+    });
     setIsLoading(false);
   };
 
@@ -144,7 +177,56 @@ export function SymptomInterview({ onComplete }: SymptomInterviewProps) {
       isCancelledRef.current = false;
       if (clientY !== undefined) startYRef.current = clientY;
       setDragY(0);
+      speechTranscriptRef.current = '';
+      setLiveTranscript('');
 
+      const SpeechRecognition = (window as any).SpeechRecognition || (window as any).webkitSpeechRecognition;
+
+      // 1. Prioridad: Reconocimiento nativo de alta velocidad (Web Speech API)
+      if (SpeechRecognition) {
+        try {
+          const recognition = new SpeechRecognition();
+          recognition.continuous = true;
+          recognition.interimResults = true;
+          recognition.lang = 'es-ES';
+
+          recognition.onresult = (event: any) => {
+            if (isCancelledRef.current) return;
+            let interim = '';
+            let final = '';
+            for (let i = 0; i < event.results.length; ++i) {
+              if (event.results[i].isFinal) final += event.results[i][0].transcript + ' ';
+              else interim += event.results[i][0].transcript;
+            }
+            const full = (final + interim).trim();
+            speechTranscriptRef.current = full;
+            setLiveTranscript(full);
+          };
+
+          recognition.onerror = (event: any) => {
+            console.warn("SpeechRecognition error:", event.error);
+            if (event.error === 'not-allowed') {
+              setMicError("no-mic-access");
+              setIsRecording(false);
+            }
+          };
+
+          recognition.onend = () => {
+            if (isRecording && !isCancelledRef.current) {
+              setIsRecording(false);
+            }
+          };
+
+          recognition.start();
+          recognitionRef.current = recognition;
+          setIsRecording(true);
+          return;
+        } catch (e) {
+          console.warn("Error al inicializar SpeechRecognition, recurriendo a MediaRecorder:", e);
+        }
+      }
+
+      // 2. Fallback: MediaRecorder para navegadores antiguos
       const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
       const mediaRecorder = new MediaRecorder(stream);
       audioChunksRef.current = [];
@@ -168,43 +250,54 @@ export function SymptomInterview({ onComplete }: SymptomInterviewProps) {
         setIsLocked(false);
         setRecordingSeconds(0);
 
-        // 1. Mostrar de inmediato que el audio se envió
         const tempAudioMsg: ChatMessage = { role: 'user', content: '🎤 Nota de voz enviada (procesando transcripción...)' };
         setMessages(prev => [...prev, tempAudioMsg]);
         setIsLoading(true);
         setMicError(null);
+
+        const controller = new AbortController();
+        activeAbortControllerRef.current = controller;
 
         try {
           const audioBlob = new Blob(audioChunksRef.current, { type: 'audio/webm' });
           const reader = new FileReader();
           reader.readAsDataURL(audioBlob);
           reader.onloadend = async () => {
-            const base64Audio = reader.result as string;
-            const res = await fetch('/api/transcribe', {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ audioBase64: base64Audio, mimeType: 'audio/webm' })
-            });
-
-            if (!res.ok) throw new Error("Error en transcripción");
-            const data = await res.json();
-            if (data.text) {
-              const transcribedText = data.text.trim();
-              const finalUserMsg: ChatMessage = { role: 'user', content: transcribedText };
-              
-              // 2. Reemplazar la nota provisional con el texto transcrito real y enviar al bot
-              setMessages(prev => {
-                const updated = [...prev];
-                updated[updated.length - 1] = finalUserMsg;
-                return updated;
+            if (isCancelledRef.current) return;
+            try {
+              const base64Audio = reader.result as string;
+              const res = await fetch('/api/transcribe', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ audioBase64: base64Audio, mimeType: 'audio/webm' }),
+                signal: controller.signal
               });
 
-              requestDoctorResponse([...messages, finalUserMsg]);
-            } else {
+              if (!res.ok) throw new Error("Error en transcripción");
+              const data = await res.json();
+              if (data.text) {
+                const transcribedText = data.text.trim();
+                const finalUserMsg: ChatMessage = { role: 'user', content: transcribedText };
+                
+                setMessages(prev => {
+                  const updated = [...prev];
+                  updated[updated.length - 1] = finalUserMsg;
+                  return updated;
+                });
+
+                requestDoctorResponse([...messages, finalUserMsg]);
+              } else {
+                setIsLoading(false);
+              }
+            } catch (e: any) {
+              if (e.name === 'AbortError') return;
+              console.error("Error transcribiendo audio:", e);
+              setMicError("transcribe-error");
               setIsLoading(false);
             }
           };
         } catch (e: any) {
+          if (e.name === 'AbortError') return;
           console.error("Error transcribiendo audio:", e);
           setMicError("transcribe-error");
           setIsLoading(false);
@@ -222,9 +315,41 @@ export function SymptomInterview({ onComplete }: SymptomInterviewProps) {
   };
 
   const stopVoiceRecording = (send: boolean = true) => {
-    if (!mediaRecorderRef.current || mediaRecorderRef.current.state === 'inactive') return;
     isCancelledRef.current = !send;
-    mediaRecorderRef.current.stop();
+
+    if (recognitionRef.current) {
+      try {
+        if (!send) recognitionRef.current.abort();
+        else recognitionRef.current.stop();
+      } catch (e) {}
+      recognitionRef.current = null;
+    }
+
+    if (mediaRecorderRef.current && mediaRecorderRef.current.state !== 'inactive') {
+      try { mediaRecorderRef.current.stop(); } catch (e) {}
+      mediaRecorderRef.current = null;
+    }
+
+    setIsRecording(false);
+    setIsLocked(false);
+    setRecordingSeconds(0);
+
+    if (!send) {
+      speechTranscriptRef.current = '';
+      setLiveTranscript('');
+      return;
+    }
+
+    const recognizedText = speechTranscriptRef.current.trim();
+    speechTranscriptRef.current = '';
+    setLiveTranscript('');
+
+    if (recognizedText) {
+      const finalUserMsg: ChatMessage = { role: 'user', content: recognizedText };
+      const updatedHistory = [...messages, finalUserMsg];
+      setMessages(updatedHistory);
+      requestDoctorResponse(updatedHistory);
+    }
   };
 
   const handlePointerDown = (e: React.PointerEvent) => {
@@ -298,11 +423,22 @@ export function SymptomInterview({ onComplete }: SymptomInterviewProps) {
             <div className="w-8 h-8 rounded-full bg-emerald-100 flex items-center justify-center shrink-0 border border-emerald-200">
               <Stethoscope className="w-4 h-4 text-emerald-600" />
             </div>
-            <div className="p-4 rounded-2xl bg-white border border-slate-200 rounded-tl-none flex gap-2 items-center h-[46px]">
-              <span className="text-xs font-mono text-emerald-700 font-bold">Transcribiendo audio...</span>
-              <div className="w-2 h-2 rounded-full bg-emerald-400 animate-bounce" />
-              <div className="w-2 h-2 rounded-full bg-emerald-400 animate-bounce" style={{ animationDelay: '0.2s' }} />
-              <div className="w-2 h-2 rounded-full bg-emerald-400 animate-bounce" style={{ animationDelay: '0.4s' }} />
+            <div className="p-3 px-4 rounded-2xl bg-white border border-slate-200 rounded-tl-none flex gap-3 items-center shadow-xs">
+              <span className="text-xs font-mono text-emerald-700 font-bold">Procesando respuesta...</span>
+              <div className="flex gap-1">
+                <div className="w-2 h-2 rounded-full bg-emerald-400 animate-bounce" />
+                <div className="w-2 h-2 rounded-full bg-emerald-400 animate-bounce" style={{ animationDelay: '0.2s' }} />
+                <div className="w-2 h-2 rounded-full bg-emerald-400 animate-bounce" style={{ animationDelay: '0.4s' }} />
+              </div>
+              <button
+                type="button"
+                onClick={handleCancelPending}
+                className="ml-2 px-2.5 py-1 text-xs font-semibold text-rose-600 hover:text-white hover:bg-rose-600 border border-rose-200 hover:border-rose-600 rounded-lg transition flex items-center gap-1 shadow-2xs cursor-pointer"
+                title="Cancelar proceso"
+              >
+                <X className="w-3 h-3" />
+                <span>Cancelar</span>
+              </button>
             </div>
           </div>
         )}

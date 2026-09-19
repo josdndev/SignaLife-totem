@@ -35,6 +35,7 @@ const MOCK_PATIENTS: RegisteredPatient[] = [
       surnames: 'Mendoza Pérez',
       idNumber: 'V-19.458.921',
       dateOfBirth: '14/05/1988',
+      gender: 'Masculino',
       maritalStatus: 'Soltero',
       issueDate: '10/02/2018',
       expiryDate: '10/02/2028'
@@ -63,6 +64,7 @@ const MOCK_PATIENTS: RegisteredPatient[] = [
       surnames: 'Rojas Silva',
       idNumber: 'V-22.109.340',
       dateOfBirth: '22/09/1994',
+      gender: 'Femenino',
       maritalStatus: 'Casada',
       issueDate: '15/06/2019',
       expiryDate: '15/06/2029'
@@ -91,6 +93,7 @@ const MOCK_PATIENTS: RegisteredPatient[] = [
       surnames: 'Gómez Hernández',
       idNumber: 'V-15.890.112',
       dateOfBirth: '03/11/1979',
+      gender: 'Masculino',
       maritalStatus: 'Casado',
       issueDate: '20/01/2016',
       expiryDate: '20/01/2026'

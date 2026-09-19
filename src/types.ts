@@ -4,6 +4,7 @@ export interface IDData {
   surnames: string;
   dateOfBirth: string;
   maritalStatus: string;
+  gender: string;
   issueDate: string;
   expiryDate: string;
 }
@@ -18,6 +19,9 @@ export interface VitalSigns {
   glucosa: number;
   hba1c: number;
   chartData: { time: number; value: number }[];
+  snr?: number;
+  signalQuality?: 'Excelente' | 'Aceptable' | 'Baja';
+  fidelity?: number;
 }
 
 export interface TriageResult {
@@ -25,6 +29,7 @@ export interface TriageResult {
   destination: string;
   waitTime: string;
   clinicalSummary: string;
+  doctorSummary: string;
 }
 
 export interface RPPGResult {

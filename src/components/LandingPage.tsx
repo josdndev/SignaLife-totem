@@ -547,7 +547,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({ onStartDemo }) => {
             </div>
 
             <div className="p-10 bg-white">
-              <form action="mailto:signalife@engidea.com.ve" method="post" enctype="text/plain" className="space-y-4">
+              <form action="mailto:signalife@engidea.com.ve" method="post" encType="text/plain" className="space-y-4">
                 <div>
                   <label className="block text-[11px] font-bold text-slate-500 uppercase tracking-wider mb-2">Nombre / Organización</label>
                   <input type="text" name="nombre" required className="w-full px-4 py-3 rounded-xl bg-slate-50 border border-slate-200 text-slate-900 text-sm focus:border-emerald-500 focus:outline-none" placeholder="Tu nombre o clínica" />
